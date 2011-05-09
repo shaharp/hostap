@@ -2503,6 +2503,17 @@ struct wpa_driver_ops {
 	 */
 	void (*poll_client)(void *priv, const u8 *own_addr,
 			    const u8 *addr, int qos);
+
+	/**
+	 * driver_cmd - execute driver-specific command
+	 * @priv: private driver interface data
+	 * @cmd: command to execute
+	 * @buf: return buffer
+	 * @buf_len: buffer length
+	 *
+	 * Returns: 0 on success, -1 on failure
+	 */
+	 int (*driver_cmd)(void *priv, char *cmd, char *buf, size_t buf_len);
 };
 
 
