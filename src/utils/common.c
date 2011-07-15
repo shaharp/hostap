@@ -379,12 +379,16 @@ void printf_encode(char *txt, size_t maxlen, const u8 *data, size_t len)
 			*txt++ = 't';
 			break;
 		default:
+#ifdef WPA_UNICODE_SSID
+			*txt++ = data[i];
+#else
 			if (data[i] >= 32 && data[i] <= 127) {
 				*txt++ = data[i];
 			} else {
 				txt += os_snprintf(txt, end - txt, "\\x%02x",
 						   data[i]);
 			}
+#endif /* WPA_UNICODE_SSID */
 			break;
 		}
 	}
