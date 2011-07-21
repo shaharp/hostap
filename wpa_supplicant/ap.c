@@ -548,6 +548,14 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
 		return -1;
 	}
 
+#ifdef ANDROID_BRCM_P2P_PATCH
+	if (wpa_drv_probe_req_report(wpa_s, 1) < 0) {
+		wpa_printf(MSG_DEBUG, "P2P: Failed to request the driver to "
+			   "report received Probe Request frames");
+		return -1;
+	}
+#endif /* ANDROID_BRCM_P2P_PATCH */
+
 	return 0;
 }
 
