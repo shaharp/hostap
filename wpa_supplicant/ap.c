@@ -23,9 +23,9 @@
 #include "ap/hostapd.h"
 #include "ap/ap_config.h"
 #include "ap/ap_drv_ops.h"
-#ifdef NEED_AP_MLME
+#if defined(NEED_AP_MLME) || defined(ANDROID_BRCM_P2P_PATCH)
 #include "ap/ieee802_11.h"
-#endif /* NEED_AP_MLME */
+#endif /* NEED_AP_MLME || ANDROID_BRCM_P2P_PATCH */
 #include "ap/beacon.h"
 #include "ap/ieee802_1x.h"
 #include "ap/wps_hostapd.h"
@@ -625,7 +625,7 @@ void ap_rx_from_unknown_sta(void *ctx, const u8 *addr, int wds)
 
 void ap_mgmt_rx(void *ctx, struct rx_mgmt *rx_mgmt)
 {
-#ifdef NEED_AP_MLME
+#if defined(NEED_AP_MLME) || defined(ANDROID_BRCM_P2P_PATCH)
 	struct wpa_supplicant *wpa_s = ctx;
 	struct hostapd_frame_info fi;
 	os_memset(&fi, 0, sizeof(fi));
@@ -633,7 +633,7 @@ void ap_mgmt_rx(void *ctx, struct rx_mgmt *rx_mgmt)
 	fi.ssi_signal = rx_mgmt->ssi_signal;
 	ieee802_11_mgmt(wpa_s->ap_iface->bss[0], rx_mgmt->frame,
 			rx_mgmt->frame_len, &fi);
-#endif /* NEED_AP_MLME */
+#endif /* NEED_AP_MLME || ANDROID_BRCM_P2P_PATCH */
 }
 
 
