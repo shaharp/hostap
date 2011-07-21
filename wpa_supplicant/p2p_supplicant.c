@@ -3569,6 +3569,10 @@ int wpas_p2p_assoc_req_ie(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
 		return -1;
 
 	p2p_ie = wpa_bss_get_vendor_ie_multi(bss, P2P_IE_VENDOR_TYPE);
+#ifdef ANDROID_BRCM_P2P_PATCH
+	if (p2p_ie == NULL)
+		return -1;
+#endif /* ANDROID_BRCM_P2P_PATCH */
 	ret = p2p_assoc_req_ie(wpa_s->global->p2p, bss->bssid, buf, len,
 			       p2p_group, p2p_ie);
 	wpabuf_free(p2p_ie);
