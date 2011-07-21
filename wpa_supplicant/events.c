@@ -845,7 +845,12 @@ int wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 	 * reassociation is requested. If we are in process of associating with
 	 * the selected BSSID, do not trigger new attempt.
 	 */
-	if (wpa_s->reassociate ||
+	if ((wpa_s->reassociate
+#ifdef ANDROID_BRCM_P2P_PATCH
+		&& (os_memcmp(selected->bssid, wpa_s->bssid, ETH_ALEN) != 0)
+		&& (wpa_s->wpa_state != WPA_COMPLETED)
+#endif
+		)||
 	    (os_memcmp(selected->bssid, wpa_s->bssid, ETH_ALEN) != 0 &&
 	     ((wpa_s->wpa_state != WPA_ASSOCIATING &&
 	       wpa_s->wpa_state != WPA_AUTHENTICATING) ||
