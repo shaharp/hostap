@@ -2217,6 +2217,9 @@ int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s)
 	struct p2p_config p2p;
 	unsigned int r;
 	int i;
+#ifdef ANDROID_BRCM_P2P_PATCH
+	char buf[200];
+#endif /* ANDROID_BRCM_P2P_PATCH */
 
 	if (!(wpa_s->drv_flags & WPA_DRIVER_FLAGS_P2P_CAPABLE))
 		return 0;
@@ -2267,6 +2270,16 @@ int wpas_p2p_init(struct wpa_global *global, struct wpa_supplicant *wpa_s)
 	p2p.get_noa = wpas_get_noa;
 
 	os_memcpy(wpa_s->global->p2p_dev_addr, wpa_s->own_addr, ETH_ALEN);
+#ifdef ANDROID_BRCM_P2P_PATCH
+	/*
+	 * P2P_ADDR: Using p2p_dev_addr to hold the actual P2P Device Address
+	 * incase we are not using the primary interface for P2P operations.
+	 */
+	wpa_drv_driver_cmd(wpa_s, "P2P_DEV_ADDR", buf, sizeof(buf));
+	os_memcpy(wpa_s->global->p2p_dev_addr, buf, ETH_ALEN);
+	wpa_printf(MSG_DEBUG, "P2P: Device address (" MACSTR ")",
+		   MAC2STR(wpa_s->global->p2p_dev_addr));
+#endif /* ANDROID_BRCM_P2P_PATCH */
 	os_memcpy(p2p.dev_addr, wpa_s->global->p2p_dev_addr, ETH_ALEN);
 	p2p.dev_name = wpa_s->conf->device_name;
 	p2p.manufacturer = wpa_s->conf->manufacturer;
