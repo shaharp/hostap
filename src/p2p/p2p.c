@@ -2900,7 +2900,15 @@ static void p2p_timeout_wait_peer_connect(struct p2p_data *p2p)
 	 * state once per second to give other uses a chance to use the radio.
 	 */
 	p2p_set_state(p2p, P2P_WAIT_PEER_IDLE);
+#ifdef ANDROID_BRCM_P2P_PATCH
+	/*
+	 * We need to be back in Listen state soon enough so that we don't miss
+	 * the GO Nego req from the peer.
+	*/
+	p2p_set_timeout(p2p, 0, 0);
+#else /* ANDROID_BRCM_P2P_PATCH */
 	p2p_set_timeout(p2p, 0, 500000);
+#endif /* ANDROID_BRCM_P2P_PATCH */
 }
 
 
