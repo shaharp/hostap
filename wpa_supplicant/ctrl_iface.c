@@ -909,6 +909,21 @@ static int wpa_supplicant_ctrl_iface_status(struct wpa_supplicant *wpa_s,
 	char *pos, *end, tmp[30];
 	int res, verbose, wps, ret;
 
+#if defined(ANDROID_BRCM_P2P_PATCH) && defined(CONFIG_P2P)
+	/*
+	 * We have to send status command to p2p interface if p2p_interface is
+	 * started. Otherwise, we can send it to primary interface.
+	 */
+	struct wpa_supplicant* ifs;
+	for (ifs = wpa_s->global->ifaces; ifs; ifs = ifs->next) {
+		if (ifs->p2p_group_interface == P2P_GROUP_INTERFACE_GO ||
+		    ifs->p2p_group_interface == P2P_GROUP_INTERFACE_CLIENT) {
+			wpa_s = ifs;
+			break;
+		}
+	}
+#endif /* defined ANDROID_BRCM_P2P_PATCH && defined CONFIG_P2P */
+
 	verbose = os_strcmp(params, "-VERBOSE") == 0;
 	wps = os_strcmp(params, "-WPS") == 0;
 	pos = buf;
