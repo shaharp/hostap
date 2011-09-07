@@ -1180,13 +1180,31 @@ static void mlme_event_disconnect(struct wpa_driver_nl80211_data *drv,
 		 */
 		wpa_printf(MSG_DEBUG, "nl80211: Ignore disconnect "
 			   "event when using userspace SME");
+#ifndef ANDROID_BRCM_P2P_PATCH
 		return;
+#endif /* ANDROID_BRCM_P2P_PATCH */
 	}
 
 	drv->associated = 0;
 	os_memset(&data, 0, sizeof(data));
-	if (reason)
+	if (reason) {
 		data.disassoc_info.reason_code = nla_get_u16(reason);
+#ifdef ANDROID_BRCM_P2P_PATCH
+		/*
+		 * The driver uses one of the reason codes to indicate that the
+		 * firmware has crashed. This event trigger reloading of the
+		 * driver to recover.
+		 *
+		 * FIX: This is pretty bad misuse of the nl80211 events and
+		 * must be fixed - any AP could send a Disassociation frame
+		 * with reason code "unspecified" and that would trigger this
+		 * reloading unnecessarily..
+		 */
+		if (data.disassoc_info.reason_code == WLAN_REASON_UNSPECIFIED)
+			wpa_msg(drv->ctx, MSG_INFO,
+				WPA_EVENT_DRIVER_STATE "HANGED");
+#endif /* ANDROID_BRCM_P2P_PATCH */
+	}
 	data.disassoc_info.locally_generated = by_ap == NULL;
 	wpa_supplicant_event(drv->ctx, EVENT_DISASSOC, &data);
 }
