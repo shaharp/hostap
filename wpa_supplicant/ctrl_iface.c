@@ -3717,6 +3717,23 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 		if (wpas_p2p_cancel(wpa_s))
 			reply_len = -1;
 	} else if (os_strncmp(buf, "P2P_PRESENCE_REQ ", 17) == 0) {
+#ifdef ANDROID_BRCM_P2P_PATCH
+		/*
+		 * We have to send presence command to P2P interface if
+		 * p2p_interface is started otherwise we can send it to primary
+		 * interface.
+		 */
+		struct wpa_supplicant *ifs;
+		for (ifs = wpa_s->global->ifaces; ifs; ifs = ifs->next) {
+			if (ifs->p2p_group_interface ==
+			    P2P_GROUP_INTERFACE_GO ||
+			    ifs->p2p_group_interface ==
+			    P2P_GROUP_INTERFACE_CLIENT) {
+				wpa_s = ifs;
+				break;
+			}
+		}
+#endif /* ANDROID_BRCM_P2P_PATCH */
 		if (p2p_ctrl_presence_req(wpa_s, buf + 17) < 0)
 			reply_len = -1;
 	} else if (os_strcmp(buf, "P2P_PRESENCE_REQ") == 0) {
