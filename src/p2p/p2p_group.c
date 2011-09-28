@@ -669,9 +669,11 @@ u8 p2p_group_presence_req(struct p2p_group *group,
 		wpa_hexdump(MSG_DEBUG, "P2P: Current NoA", curr_noa,
 			    curr_noa_len);
 
+#ifndef ANDROID_BRCM_P2P_PATCH
 	/* TODO: properly process request and store copy */
 	if (curr_noa_len > 0 || curr_noa_len == -1)
 		return P2P_SC_FAIL_UNABLE_TO_ACCOMMODATE;
+#endif /* ANDROID_BRCM_P2P_PATCH */
 
 	return P2P_SC_SUCCESS;
 }
