@@ -111,6 +111,10 @@ int wpas_p2p_ext_listen(struct wpa_supplicant *wpa_s, unsigned int period,
 			unsigned int interval);
 void wpas_p2p_deauth_notif(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			   u16 reason_code, const u8 *ie, size_t ie_len);
+#ifdef ANDROID_BRCM_P2P_PATCH
+int wpas_drv_set_p2p_powersave(struct wpa_supplicant *wpa_s, int legacy_ps,
+			       int opp_ps, int ctwindow);
+#endif /* ANDROID_BRCM_P2P_PATCH */
 void wpas_p2p_disassoc_notif(struct wpa_supplicant *wpa_s, const u8 *bssid,
 			     u16 reason_code, const u8 *ie, size_t ie_len);
 void wpas_p2p_update_config(struct wpa_supplicant *wpa_s);
