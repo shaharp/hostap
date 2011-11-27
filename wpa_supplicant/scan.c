@@ -710,6 +710,13 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 		ssid = ssid->next;
 	}
 
+	if (!params.num_filter_ssids) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "No SSIDs for sched scan were found");
+		if (params.filter_ssids)
+			os_free(params.filter_ssids);
+		return 0;
+	}
+
 	/* In case no SSIDs for active scan add wildcard SSID to trigger
 	   broadcast probe request */
 	if (!params.num_ssids)
@@ -728,7 +735,6 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 
 	if (ret)
 		return ret;
-
 
 	/* If we have more SSIDs to scan, add a timeout so we scan them too */
 	if (ssid || !wpa_s->first_sched_scan) {
