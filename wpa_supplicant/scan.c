@@ -730,10 +730,14 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 	}
 
 	if (wpa_s->sched_scanning) {
-		wpa_dbg(wpa_s, MSG_DEBUG, "Cancel previous sched scan");
-		wpa_s->override_sched_scan = 1;
-		wpa_supplicant_cancel_sched_scan(wpa_s);
-		return 0;
+		wpa_dbg(wpa_s, MSG_DEBUG,
+			"Restarting sched scan with new parameters");
+		ret = wpa_supplicant_cancel_sched_scan(wpa_s);
+		if (!ret) {
+			wpa_s->override_sched_scan = 1;
+			return 0;
+		}
+		/* If failed probably no scan running so continu */
 	}
 
 	wpa_s->override_sched_scan = 0;
