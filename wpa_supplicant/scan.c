@@ -811,6 +811,12 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 	if (!wpa_s->sched_scan_supported)
 		return -1;
 
+	if (wpas_wps_in_progress(wpa_s)) {
+		wpa_dbg(wpa_s, MSG_DEBUG,
+			"WPS in progress. Falling back to normal scan");
+		return -EBUSY;
+	}
+
 	if (wpa_s->max_sched_scan_ssids > WPAS_MAX_SCAN_SSIDS)
 		max_sched_scan_ssids = WPAS_MAX_SCAN_SSIDS;
 	else
