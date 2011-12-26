@@ -226,11 +226,8 @@ wpa_supplicant_start_sched_scan(struct wpa_supplicant *wpa_s,
 {
 	int ret;
 
-	wpa_supplicant_notify_scanning(wpa_s, 1);
 	ret = wpa_drv_sched_scan(wpa_s, params, interval * 1000);
-	if (ret)
-		wpa_supplicant_notify_scanning(wpa_s, 0);
-	else
+	if (!ret)
 		wpa_s->sched_scanning = 1;
 
 	return ret;
@@ -786,7 +783,6 @@ int wpa_supplicant_delayed_sched_scan(struct wpa_supplicant *wpa_s,
 int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 {
 	struct wpa_driver_scan_params params;
-	enum wpa_states prev_state;
 	struct wpa_ssid *ssid = NULL;
 	struct wpabuf *wps_ie = NULL;
 	int ret, prio;
@@ -867,15 +863,11 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 	params.filter_ssids = os_zalloc(wpa_s->max_match_sets *
 					sizeof(struct wpa_driver_scan_filter));
 
+
 	/* Don't sched scan if we can't filter because this will
 	 * wake up the host too frequently during suspend */
 	if (!params.filter_ssids)
 		return -ENOMEM;
-
-	prev_state = wpa_s->wpa_state;
-	if (wpa_s->wpa_state == WPA_DISCONNECTED ||
-	    wpa_s->wpa_state == WPA_INACTIVE)
-		wpa_supplicant_set_state(wpa_s, WPA_SCANNING);
 
 	for (prio = 0; prio < wpa_s->conf->num_prio; prio++) {
 		ssid = wpa_s->conf->pssid[prio];
