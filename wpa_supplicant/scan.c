@@ -232,11 +232,8 @@ wpa_supplicant_start_sched_scan(struct wpa_supplicant *wpa_s,
 {
 	int ret;
 
-	wpa_supplicant_notify_scanning(wpa_s, 1);
 	ret = wpa_drv_sched_scan(wpa_s, params, interval * 1000);
-	if (ret)
-		wpa_supplicant_notify_scanning(wpa_s, 0);
-	else
+	if (!ret)
 		wpa_s->sched_scanning = 1;
 
 	return ret;
@@ -716,7 +713,6 @@ int wpa_supplicant_delayed_sched_scan(struct wpa_supplicant *wpa_s,
 int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 {
 	struct wpa_driver_scan_params params;
-	enum wpa_states prev_state;
 	struct wpa_ssid *ssid = NULL;
 	struct wpabuf *wps_ie = NULL;
 	int ret, prio;
@@ -784,52 +780,45 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 	params.filter_ssids = os_zalloc(wpa_s->max_match_sets *
 					sizeof(struct wpa_driver_scan_filter));
 
-
     /* Don't sched scan if we can't filter because this will
      * wake up the host too frequently during suspend */
     if (!params.filter_ssids)
         return -ENOMEM;
 
-	prev_state = wpa_s->wpa_state;
-	if (wpa_s->wpa_state == WPA_DISCONNECTED ||
-	    wpa_s->wpa_state == WPA_INACTIVE)
-		wpa_supplicant_set_state(wpa_s, WPA_SCANNING);
-
-
 	for (prio = 0; prio < wpa_s->conf->num_prio; prio++) {
 		ssid = wpa_s->conf->pssid[prio];
-		while (ssid) {
-			if (ssid->disabled) {
-				ssid = ssid->pnext;
-				continue;
-			}
+        while (ssid) {
+            if (ssid->disabled) {
+                ssid = ssid->pnext;
+                continue;
+            }
 
-			if ((params.num_filter_ssids >= wpa_s->max_match_sets) ||
-			    (params.num_ssids >= max_sched_scan_ssids))
-				goto start_scan;
+            if ((params.num_filter_ssids >= wpa_s->max_match_sets) ||
+                (params.num_ssids >= max_sched_scan_ssids))
+                goto start_scan;
 
-			if (params.filter_ssids && ssid->ssid && ssid->ssid_len) {
-				wpa_dbg(wpa_s, MSG_DEBUG, "add to filter ssid: %s",
-					wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
-				os_memcpy(params.filter_ssids[params.num_filter_ssids].ssid,
-					  ssid->ssid, ssid->ssid_len);
-				params.filter_ssids[params.num_filter_ssids].ssid_len =
-					ssid->ssid_len;
-				params.num_filter_ssids++;
-			}
+            if (params.filter_ssids && ssid->ssid && ssid->ssid_len) {
+                wpa_dbg(wpa_s, MSG_DEBUG, "add to filter ssid: %s",
+                        wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
+                os_memcpy(params.filter_ssids[params.num_filter_ssids].ssid,
+                          ssid->ssid, ssid->ssid_len);
+                params.filter_ssids[params.num_filter_ssids].ssid_len =
+                    ssid->ssid_len;
+                params.num_filter_ssids++;
+            }
 
-			if (ssid->scan_ssid) {
-				wpa_dbg(wpa_s, MSG_DEBUG, "add to active scan ssid: %s",
-					wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
-				params.ssids[params.num_ssids].ssid =
-					ssid->ssid;
-				params.ssids[params.num_ssids].ssid_len =
-					ssid->ssid_len;
-				params.num_ssids++;
-			}
-			ssid = ssid->pnext;
-		}
-	}
+            if (ssid->scan_ssid) {
+                wpa_dbg(wpa_s, MSG_DEBUG, "add to active scan ssid: %s",
+                        wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
+                params.ssids[params.num_ssids].ssid =
+                    ssid->ssid;
+                params.ssids[params.num_ssids].ssid_len =
+                    ssid->ssid_len;
+                params.num_ssids++;
+            }
+            ssid = ssid->pnext;
+        }
+    }
 
 start_scan:
 	/* In case no SSIDs for active scan add wildcard SSID to trigger
@@ -852,8 +841,8 @@ start_scan:
 	if (ret) {
 		wpa_dbg(wpa_s, MSG_WARNING,
 			"Failed to start sched scan (%d)", ret);
-		return ret;
-	}
+        return ret;
+    }
 
 	if (prio < wpa_s->conf->num_prio) {
 		wpa_dbg(wpa_s, MSG_DEBUG,
