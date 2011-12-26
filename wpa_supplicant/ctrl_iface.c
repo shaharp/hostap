@@ -1762,7 +1762,7 @@ static int wpa_supplicant_ctrl_iface_remove_network(
 			wpa_supplicant_disassociate(wpa_s,
 				                    WLAN_REASON_DEAUTH_LEAVING);
 		}
-		return 0;
+		goto req_sched_scan;
 	}
 
 	id = atoi(cmd);
@@ -1793,6 +1793,8 @@ static int wpa_supplicant_ctrl_iface_remove_network(
 		wpa_supplicant_disassociate(wpa_s, WLAN_REASON_DEAUTH_LEAVING);
 	}
 
+req_sched_scan:
+	wpa_supplicant_req_sched_scan(wpa_s);
 	return 0;
 }
 
