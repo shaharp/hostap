@@ -278,6 +278,10 @@ struct wpa_driver_scan_params {
 	 * and not to transmit the frames at any of those rates.
 	 */
 	u8 p2p_probe;
+
+	int min_dwell_time;
+
+	int max_dwell_time;
 };
 
 /**

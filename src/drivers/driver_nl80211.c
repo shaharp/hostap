@@ -3643,6 +3643,18 @@ static int wpa_driver_nl80211_scan(void *priv,
 		NLA_PUT_FLAG(msg, NL80211_ATTR_TX_NO_CCK_RATE);
 	}
 
+	if (params->min_dwell_time) {
+		wpa_printf(MSG_MSGDUMP, "nl80211: Scan min dwell time %d",
+				params->min_dwell_time);
+		NLA_PUT_U32(msg, NL80211_ATTR_SCAN_MIN_DWELL, params->min_dwell_time);
+	}
+
+	if (params->max_dwell_time) {
+		wpa_printf(MSG_MSGDUMP, "nl80211: Scan max dwell time %d",
+				params->max_dwell_time);
+		NLA_PUT_U32(msg, NL80211_ATTR_SCAN_MAX_DWELL, params->max_dwell_time);
+	}
+
 	ret = send_and_recv_msgs(drv, msg, NULL, NULL);
 	msg = NULL;
 	if (ret) {
