@@ -375,6 +375,20 @@ static inline int wpa_drv_set_freq(struct wpa_supplicant *wpa_s,
 	return -1;
 }
 
+static inline int wpa_drv_set_tx_power(struct wpa_supplicant *wpa_s, int fixed, int mbm)
+{
+	if (wpa_s->driver->set_tx_power)
+		return wpa_s->driver->set_tx_power(wpa_s->drv_priv, fixed, mbm);
+	return -1;
+}
+
+static inline int wpa_drv_get_tx_power(struct wpa_supplicant *wpa_s, int *mbm)
+{
+	if (wpa_s->driver->get_tx_power)
+		return wpa_s->driver->get_tx_power(wpa_s->drv_priv, mbm);
+	return -1;
+}
+
 static inline int wpa_drv_if_add(struct wpa_supplicant *wpa_s,
 				 enum wpa_driver_if_type type,
 				 const char *ifname, const u8 *addr,

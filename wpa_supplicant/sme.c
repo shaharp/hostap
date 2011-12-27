@@ -265,7 +265,36 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 		*pos++ = 0x80; /* Bit 31 - Interworking */
 	}
 #endif /* CONFIG_INTERWORKING */
+#ifdef TI_CCX
+	{
+		const u8* ccx_power_limit_ie = wpa_bss_get_ie(bss, WLAN_EID_CELL_POWER_LIMIT);
+		int mbm, ret;
+		ret = wpa_drv_get_tx_power(wpa_s, &mbm);
+		wpa_s->tx_power = -1;
+		wpa_s->user_tx_power = mbm/100;
+		if (ccx_power_limit_ie != NULL && ccx_power_limit_ie[1] >= 6) {
+			u8 tx_power = ccx_power_limit_ie[6];
+			wpa_printf(MSG_ERROR, "CCX: tx_power = %d\n", tx_power);
+			if (ret || ((mbm > 0) && (tx_power < (mbm/100)))) {
+				wpa_s->tx_power = tx_power;
+			}
+		}
+	}
 
+if (wpa_s->sme.assoc_req_ie_len + CCX_VERSION_IE_LEN + 2 <
+			sizeof(wpa_s->sme.assoc_req_ie)) {
+		u8 *pos = wpa_s->sme.assoc_req_ie +
+				wpa_s->sme.assoc_req_ie_len;
+		*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+		*pos++ = CCX_VERSION_IE_LEN;
+		*pos++ = 0x00;
+		*pos++ = 0x40;
+		*pos++ = 0x96;
+		*pos++ = CCX_VERSION_IE_ID;
+		*pos++ = CCX_SUPPORTED_VERSION;
+		wpa_s->sme.assoc_req_ie_len += CCX_VERSION_IE_LEN + 2;
+	}
+#endif /* TI_CCX */
 	wpa_supplicant_cancel_sched_scan(wpa_s);
 	wpa_supplicant_cancel_scan(wpa_s);
 

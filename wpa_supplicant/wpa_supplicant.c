@@ -657,6 +657,15 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 	if (state == WPA_COMPLETED || state == WPA_DISCONNECTED)
 		wpa_supplicant_clear_roaming(wpa_s, 0);
 
+#ifdef TI_CCX
+	if (wpa_s->wpa_state == WPA_COMPLETED &&
+			!(wpa_s->drv_flags & WPA_DRIVER_FLAGS_4WAY_HANDSHAKE) ) {
+		if (wpa_s->tx_power != -1) {
+			wpa_drv_set_tx_power(wpa_s, 0, wpa_s->tx_power * 100);
+		}
+	}
+#endif /* TI_CCX */
+
 	if (wpa_s->wpa_state != old_state) {
 		wpas_notify_state_changed(wpa_s, wpa_s->wpa_state, old_state);
 

@@ -579,6 +579,8 @@ struct wpa_supplicant {
 	int cckm_available;
 	struct CCX_ROGUEAP_LIST_s * pstRogueApList;
 	int ccx_roaming;
+	int user_tx_power;
+	int tx_power;
 #endif /* TI_CCX */
 };
 

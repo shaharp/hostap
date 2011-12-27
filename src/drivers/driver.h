@@ -301,7 +301,9 @@ struct wpa_driver_auth_params {
 	 * p2p - Whether this connection is a P2P group
 	 */
 	int p2p;
-
+#ifdef TI_CCX
+	int tx_power;
+#endif /* TI_CCX */
 };
 
 enum wps_mode {
@@ -864,6 +866,7 @@ struct wpa_driver_capa {
 /* Driver Probe Response offloading support for IEEE 802.11u (Interworking) */
 #define WPA_DRIVER_PROBE_RESP_OFFLOAD_INTERWORKING	0x00000008
 	unsigned int probe_resp_offloads;
+	int tx_power;
 };
 
 
@@ -1786,6 +1789,23 @@ struct wpa_driver_ops {
 	 * Returns: 0 on success, -1 on failure
 	 */
 	int (*set_freq)(void *priv, struct hostapd_freq_params *freq);
+
+	/**
+	 * set_tx_power - Set the max tx power
+	 * @priv: Private driver interface data
+	 * @fixed: 1 = tx power fixed, 0 = tx power limited
+	 * @mbm: max tx power in mBm 0 implies automatic tx power
+	 * Returns: 0 on success, -1 on failure
+	 */
+	int (*set_tx_power)(void *priv, int fixed, int mbm);
+
+	/**
+	 * get_tx_power - Get the max tx power
+	 * @priv: Private driver interface data
+	 * @mbm: max tx power in mBm 0 implies automatic tx power
+	 * Returns: 0 on success, -1 on failure
+	 */
+	int (*get_tx_power)(void *priv, int *mbm);
 
 	/**
 	 * set_rts - Set RTS threshold

@@ -526,6 +526,47 @@ nla_put_failure:
 	return ret;
 }
 
+static int nl80211_set_tx_power(struct wpa_driver_nl80211_data* drv,
+		int fixed, int mbm)
+{
+	enum nl80211_tx_power_setting type = NL80211_TX_POWER_AUTOMATIC;
+
+	struct nl_msg *msg;
+	int ret;
+
+	msg = nlmsg_alloc();
+	if (!msg)
+		return -1;
+
+	wpa_printf(MSG_DEBUG, "nl80211: setting tx power, mbm = %d", mbm);
+
+	genlmsg_put(msg, 0, 0, drv->global->nl80211_id, 0, 0,
+			NL80211_CMD_SET_WIPHY, 0);
+
+	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, drv->ifindex);
+	if (mbm) {
+		type = (fixed) ? NL80211_TX_POWER_FIXED : NL80211_TX_POWER_LIMITED;
+		NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_TX_POWER_LEVEL, mbm);
+	}
+
+	NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_TX_POWER_SETTING, type);
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL);
+	if (ret == 0)
+		return 0;
+	wpa_printf(MSG_DEBUG, "nl80211: Failed to set tx power (power=%d): "
+			"%d (%s)", mbm, ret, strerror(-ret));
+nla_put_failure:
+	return -1;
+
+}
+
+static int wpa_driver_nl80211_set_tx_power(void *priv, int fixed, int mbm) {
+
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	return nl80211_set_tx_power(drv, fixed, mbm);
+}
 
 static void * nl80211_cmd(struct wpa_driver_nl80211_data *drv,
 			  struct nl_msg *msg, int flags, uint8_t cmd)
@@ -2616,6 +2657,10 @@ broken_combination:
 			probe_resp_offload_support(protocols);
 	}
 
+	if (tb[NL80211_ATTR_WIPHY_TX_POWER_LEVEL])
+		capa->tx_power =
+			nla_get_u32(tb[NL80211_ATTR_WIPHY_TX_POWER_LEVEL]);
+
 	return NL_SKIP;
 }
 
@@ -2710,6 +2755,19 @@ static int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv)
 	return 0;
 }
 
+static int wpa_driver_nl80211_get_tx_power(void *priv, int *mbm) {
+
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	struct wiphy_info_data info;
+
+	if (wpa_driver_nl80211_get_info(drv, &info) == -1) {
+		return -1;
+	}
+
+	*mbm = (info.capa->tx_power * 100);
+	return 0;
+}
 
 #ifdef ANDROID
 static int android_genl_ctrl_resolve(struct nl_handle *handle,
@@ -9760,6 +9818,8 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.sta_disassoc = i802_sta_disassoc,
 #endif /* HOSTAPD || CONFIG_AP */
 	.set_freq = i802_set_freq,
+	.set_tx_power = wpa_driver_nl80211_set_tx_power,
+	.get_tx_power = wpa_driver_nl80211_get_tx_power,
 	.send_action = wpa_driver_nl80211_send_action,
 	.send_action_cancel_wait = wpa_driver_nl80211_send_action_cancel_wait,
 	.remain_on_channel = wpa_driver_nl80211_remain_on_channel,
