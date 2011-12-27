@@ -159,6 +159,14 @@ NEED_SHA256=y
 NEED_AES_OMAC1=y
 endif
 
+#ifdef TI_CCX
+ifdef CONFIG_CCX
+CFLAGS += -DTI_CCX
+OBJS += ../src/ccx/ccx.o
+OBJS += ../src/ccx/ccx_rogue_ap.o
+endif
+#endif /* TI_CCX */
+
 ifdef CONFIG_IEEE80211R
 CFLAGS += -DCONFIG_IEEE80211R
 OBJS += ../src/rsn_supp/wpa_ft.o
@@ -1294,6 +1302,10 @@ OBJS += $(SHA1OBJS) $(DESOBJS)
 OBJS_p += $(SHA1OBJS)
 OBJS_p += $(SHA256OBJS)
 
+ifdef CONFIG_ROAMING
+CFLAGS += -DCONFIG_ROAMING
+endif
+
 ifdef CONFIG_BGSCAN_SIMPLE
 CFLAGS += -DCONFIG_BGSCAN_SIMPLE
 OBJS += bgscan_simple.o
@@ -1308,6 +1320,7 @@ endif
 
 ifdef NEED_BGSCAN
 CFLAGS += -DCONFIG_BGSCAN
+CFLAGS += -DCONFIG_ROAMING
 OBJS += bgscan.o
 endif
 

@@ -685,4 +685,18 @@ static inline int wpa_drv_driver_cmd(struct wpa_supplicant *wpa_s,
 	return wpa_s->driver->driver_cmd(wpa_s->drv_priv, cmd, buf, buf_len);
 }
 
+#ifdef TI_CCX
+static inline void wpa_drv_update_cckm_request(struct wpa_supplicant *wpa_s,
+                                               int fastHandoff, int reassociationIEReqLength, u8* reassociationIE)
+{
+	if (wpa_s->driver->update_cckm_request)
+	{
+        wpa_s->driver->update_cckm_request(wpa_s->drv_priv, fastHandoff, reassociationIEReqLength, reassociationIE);
+	}
+	else
+	{
+		wpa_printf (MSG_ERROR,"CCKM: Driver don't support update_cckm_request\n");
+	}
+}
+#endif /* TI_CCX */
 #endif /* DRIVER_I_H */

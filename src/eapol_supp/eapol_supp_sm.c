@@ -17,6 +17,9 @@
 #include "common/eapol_common.h"
 #include "eap_peer/eap.h"
 #include "eapol_supp_sm.h"
+#ifdef TI_CCX
+#include "ccx/ccx_rogue_ap.h"
+#endif /* TI_CCX */
 
 #define STATE_MACHINE_DATA struct eapol_sm
 #define STATE_MACHINE_DEBUG_PREFIX "EAPOL"
@@ -815,6 +818,11 @@ static void eapol_sm_processKey(struct eapol_sm *sm)
 		    (sm->broadcast_key_received ||
 		     !(sm->conf.required_keys & EAPOL_REQUIRE_KEY_BROADCAST)))
 		{
+#ifdef TI_CCX
+            if (FALSE == sm->portValid) {
+				ccx_rogueap_send_list(sm->ctx->ctx);
+			}
+#endif /* TI_CCX */
 			wpa_printf(MSG_DEBUG, "EAPOL: all required EAPOL-Key "
 				   "frames received");
 			sm->portValid = TRUE;

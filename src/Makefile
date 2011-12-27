@@ -1,5 +1,9 @@
 SUBDIRS=ap common crypto drivers eapol_auth eapol_supp eap_common eap_peer eap_server l2_packet p2p radius rsn_supp tls utils wps
 
+#ifdef TI_CCX
+SUBDIRS += ccx
+#endif /* TI_CCX */
+
 all:
 	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done
 

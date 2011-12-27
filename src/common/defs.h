@@ -23,6 +23,11 @@ typedef enum { FALSE = 0, TRUE = 1 } Boolean;
 #define WPA_CIPHER_WEP104 BIT(2)
 #define WPA_CIPHER_TKIP BIT(3)
 #define WPA_CIPHER_CCMP BIT(4)
+#ifdef TI_CCX
+#define WPA_CIPHER_CKIP BIT(5)
+#define WPA_CIPHER_CMIC BIT(6)
+#define WPA_CIPHER_CKIP_CMIC BIT(7)
+#endif /* TI_CCX */
 #ifdef CONFIG_IEEE80211W
 #define WPA_CIPHER_AES_128_CMAC BIT(5)
 #endif /* CONFIG_IEEE80211W */
@@ -37,7 +42,9 @@ typedef enum { FALSE = 0, TRUE = 1 } Boolean;
 #define WPA_KEY_MGMT_IEEE8021X_SHA256 BIT(7)
 #define WPA_KEY_MGMT_PSK_SHA256 BIT(8)
 #define WPA_KEY_MGMT_WPS BIT(9)
-
+#ifdef TI_CCX
+#define KEY_MGMT_CCKM_BIT BIT(12)
+#endif /* TI_CCX */
 static inline int wpa_key_mgmt_wpa_ieee8021x(int akm)
 {
 	return !!(akm & (WPA_KEY_MGMT_IEEE8021X |

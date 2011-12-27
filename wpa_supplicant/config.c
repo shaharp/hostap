@@ -15,6 +15,9 @@
 #include "eap_peer/eap.h"
 #include "p2p/p2p.h"
 #include "config.h"
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#endif /* TI_CCX */
 
 
 #if !defined(CONFIG_CTRL_IFACE) && defined(CONFIG_NO_CONFIG_WRITE)
@@ -525,6 +528,10 @@ static int wpa_config_parse_key_mgmt(const struct parse_data *data,
 			val |= WPA_KEY_MGMT_PSK;
 		else if (os_strcmp(start, "WPA-EAP") == 0)
 			val |= WPA_KEY_MGMT_IEEE8021X;
+#ifdef TI_CCX
+		else if (os_strcmp(start, "CCKM") == 0)
+			val |= WPA_KEY_MGMT_IEEE8021X | KEY_MGMT_CCKM_BIT;
+#endif /* TI_CCX */
 		else if (os_strcmp(start, "IEEE8021X") == 0)
 			val |= WPA_KEY_MGMT_IEEE8021X_NO_WPA;
 		else if (os_strcmp(start, "NONE") == 0)

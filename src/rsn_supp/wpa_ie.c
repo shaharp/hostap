@@ -15,6 +15,9 @@
 #include "wpa_i.h"
 #include "wpa_ie.h"
 
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#endif /* TI_CCX */
 
 /**
  * wpa_parse_wpa_ie - Parse WPA/RSN IE
@@ -84,7 +87,13 @@ static int wpa_gen_wpa_ie_wpa(u8 *wpa_ie, size_t wpa_ie_len,
 
 	*pos++ = 1;
 	*pos++ = 0;
-	if (key_mgmt == WPA_KEY_MGMT_IEEE8021X) {
+
+	if ( 0 ) {
+#ifdef TI_CCX
+	} else if (key_mgmt == KEY_MGMT_CCKM_BIT) {
+		RSN_SELECTOR_PUT(pos, KEY_MGMT_CCKM_OUI);
+#endif /* TI_CCX */
+	} else if (key_mgmt == WPA_KEY_MGMT_IEEE8021X) {
 		RSN_SELECTOR_PUT(pos, WPA_AUTH_KEY_MGMT_UNSPEC_802_1X);
 	} else if (key_mgmt == WPA_KEY_MGMT_PSK) {
 		RSN_SELECTOR_PUT(pos, WPA_AUTH_KEY_MGMT_PSK_OVER_802_1X);
@@ -162,7 +171,13 @@ static int wpa_gen_wpa_ie_rsn(u8 *rsn_ie, size_t rsn_ie_len,
 
 	*pos++ = 1;
 	*pos++ = 0;
-	if (key_mgmt == WPA_KEY_MGMT_IEEE8021X) {
+
+	if (0) {
+#ifdef TI_CCX
+	} else if (key_mgmt == KEY_MGMT_CCKM_BIT) {
+		RSN_SELECTOR_PUT(pos, KEY_MGMT_CCKM_OUI);
+#endif /* TI_CCX */
+	} else if (key_mgmt == WPA_KEY_MGMT_IEEE8021X) {
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_UNSPEC_802_1X);
 	} else if (key_mgmt == WPA_KEY_MGMT_PSK) {
 		RSN_SELECTOR_PUT(pos, RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X);
@@ -239,17 +254,26 @@ static int wpa_gen_wpa_ie_rsn(u8 *rsn_ie, size_t rsn_ie_len,
  */
 int wpa_gen_wpa_ie(struct wpa_sm *sm, u8 *wpa_ie, size_t wpa_ie_len)
 {
+	int key_mgmt = sm->key_mgmt;
+#ifdef TI_CCX
+	// forces to use cckm in case it is available
+	if ( 1 == sm->ccx.cckm_available ) {
+		key_mgmt = KEY_MGMT_CCKM_BIT;
+	}
+#endif /* TI_CCX */
+
 	if (sm->proto == WPA_PROTO_RSN)
 		return wpa_gen_wpa_ie_rsn(wpa_ie, wpa_ie_len,
 					  sm->pairwise_cipher,
 					  sm->group_cipher,
-					  sm->key_mgmt, sm->mgmt_group_cipher,
+					  key_mgmt,
+					  sm->mgmt_group_cipher,
 					  sm);
 	else
 		return wpa_gen_wpa_ie_wpa(wpa_ie, wpa_ie_len,
 					  sm->pairwise_cipher,
 					  sm->group_cipher,
-					  sm->key_mgmt);
+					  key_mgmt);
 }
 
 

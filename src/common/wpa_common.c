@@ -17,6 +17,9 @@
 #include "ieee802_11_defs.h"
 #include "defs.h"
 #include "wpa_common.h"
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#endif /* TI_CCX */
 
 
 /**
@@ -356,6 +359,10 @@ static int rsn_selector_to_bitfield(const u8 *s)
 
 static int rsn_key_mgmt_to_bitfield(const u8 *s)
 {
+#ifdef TI_CCX
+	if (RSN_SELECTOR_GET(s) == KEY_MGMT_CCKM_OUI)
+		return KEY_MGMT_CCKM_BIT;
+#endif /* TI_CCX */
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_UNSPEC_802_1X)
 		return WPA_KEY_MGMT_IEEE8021X;
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X)
@@ -571,6 +578,10 @@ static int wpa_key_mgmt_to_bitfield(const u8 *s)
 		return WPA_KEY_MGMT_PSK;
 	if (RSN_SELECTOR_GET(s) == WPA_AUTH_KEY_MGMT_NONE)
 		return WPA_KEY_MGMT_WPA_NONE;
+#ifdef TI_CCX
+	if (RSN_SELECTOR_GET(s) == KEY_MGMT_CCKM_OUI)
+		return KEY_MGMT_CCKM_BIT | WPA_KEY_MGMT_IEEE8021X;
+#endif /* TI_CCX */
 	return 0;
 }
 

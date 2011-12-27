@@ -49,6 +49,10 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 #ifdef CONFIG_IEEE80211R
 	const u8 *md = NULL;
 #endif /* CONFIG_IEEE80211R */
+#ifdef TI_CCX
+	u8* ccx_ies = NULL;
+	size_t ccx_ies_len = 0;
+#endif /* TI_CCX */
 	int i, bssid_changed;
 
 	if (bss == NULL) {
@@ -127,6 +131,27 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 				"key management and encryption suites");
 			return;
 		}
+#ifdef TI_CCX
+		if (wpa_s->cckm_available == 1 && wpa_s->ccx_roaming) {
+			ccx_ies = ccx_event_cckm_start_handler(wpa_s, (BYTE*)&bss->tsf, bss->bssid,
+					&ccx_ies_len);
+			if (ccx_ies_len == 0 || ccx_ies == NULL)
+				wpa_printf( MSG_ERROR, "Failed building CCKM IE, len = %d", ccx_ies_len);
+			else {
+				wpa_printf (MSG_DEBUG, "Finished building CCKM IE, len = %d, tsf = %llu "MACSTR, ccx_ies_len, bss->tsf, MAC2STR(bss->bssid));
+				if (wpa_s->sme.assoc_req_ie_len + ccx_ies_len <
+						sizeof(wpa_s->sme.assoc_req_ie)) {
+						u8 *pos = wpa_s->sme.assoc_req_ie +
+							wpa_s->sme.assoc_req_ie_len;
+							os_memcpy(pos, ccx_ies, ccx_ies_len);
+						wpa_s->sme.assoc_req_ie_len += ccx_ies_len;
+				}
+			}
+		}
+		else {
+			wpa_printf(MSG_ERROR, "NO CCKM IE: cckm_available = %d, roaming = %d", wpa_s->cckm_available, wpa_s->ccx_roaming);
+		}
+#endif /* TI_CCX */
 	} else if (wpa_key_mgmt_wpa_any(ssid->key_mgmt)) {
 		wpa_s->sme.assoc_req_ie_len = sizeof(wpa_s->sme.assoc_req_ie);
 		if (wpa_supplicant_set_suites(wpa_s, NULL, ssid,

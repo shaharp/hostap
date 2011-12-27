@@ -104,6 +104,52 @@ int hmac_sha1(const u8 *key, size_t key_len, const u8 *data, size_t data_len,
 }
 
 
+#ifdef TI_CCX
+/**
+ * sha1_prf_no_label - SHA1-based Pseudo-Random Function (PRF) (IEEE 802.11i, 8.5.1.1)
+ * @key: Key for PRF
+ * @key_len: Length of the key in bytes
+ * @data: Extra data to bind into the key
+ * @data_len: Length of the data
+ * @buf: Buffer for the generated pseudo-random key
+ * @buf_len: Number of bytes of key to generate
+ *
+ * This function is used to derive new, cryptographically separate keys from a
+ * given key (e.g., PMK in IEEE 802.11i).
+ */
+void sha1_prf_no_label(const u8 *key, size_t key_len,
+	      const u8 *data, size_t data_len, u8 *buf, size_t buf_len)
+{
+	u8 counter = 0;
+	size_t pos, plen;
+	u8 hash[SHA1_MAC_LEN];
+	const unsigned char *addr[2];
+	size_t len[2];
+
+
+	addr[0] = data;
+	len[0] = data_len;
+	addr[1] = &counter;
+	len[1] = 1;
+
+	pos = 0;
+	while (pos < buf_len) {
+		plen = buf_len - pos;
+		if (plen >= SHA1_MAC_LEN) {
+			hmac_sha1_vector(key, key_len, 2, addr, len,
+					 &buf[pos]);
+			pos += SHA1_MAC_LEN;
+		} else {
+			hmac_sha1_vector(key, key_len, 2, addr, len,
+					 hash);
+			os_memcpy(&buf[pos], hash, plen);
+			break;
+		}
+		counter++;
+	}
+}
+#endif /* TI_CCX */
+
 /**
  * sha1_prf - SHA1-based Pseudo-Random Function (PRF) (IEEE 802.11i, 8.5.1.1)
  * @key: Key for PRF

@@ -122,6 +122,10 @@ struct wpa_sm {
 	u8 *assoc_resp_ies; /* MDIE and FTIE from (Re)Association Response */
 	size_t assoc_resp_ies_len;
 #endif /* CONFIG_IEEE80211R */
+
+#ifdef TI_CCX
+	struct ccx_data ccx;
+#endif /* TI_CCX */
 };
 
 

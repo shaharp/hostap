@@ -13,6 +13,9 @@
 #include "crypto/crypto.h"
 #include "crypto/random.h"
 #include "eap_i.h"
+#ifdef TI_CCX
+#include "ccx/ccx_rogue_ap.h"
+#endif /* TI_CCX */
 
 #define LEAP_VERSION 1
 #define LEAP_CHALLENGE_LEN 8
@@ -250,6 +253,10 @@ static struct wpabuf * eap_leap_process_response(struct eap_sm *sm, void *priv,
 		wpa_hexdump(MSG_DEBUG, "EAP-LEAP: Expected response from AP",
 			    expected, LEAP_RESPONSE_LEN);
 		ret->decision = DECISION_FAIL;
+#ifdef TI_CCX
+        // sm->msg_ctx holds a pointer to wpa_supplicant.
+        ccx_rogueap_add_self(sm->msg_ctx, CCX_ROGUEAP_FAIL_REASON_TAUTH_FAILED);
+#endif /* TI_CCX */
 		return NULL;
 	}
 

@@ -39,7 +39,11 @@
 #include "bss.h"
 #include "scan.h"
 #include "offchannel.h"
-
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#include "rsn_supp/wpa_i.h"
+#include "ccx/ccx_rogue_ap.h"
+#endif /* TI_CCX */
 
 static int wpa_supplicant_select_config(struct wpa_supplicant *wpa_s)
 {
@@ -893,6 +897,12 @@ int wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 			wpa_s->reassociate, MAC2STR(selected->bssid),
 			MAC2STR(wpa_s->bssid), MAC2STR(wpa_s->pending_bssid),
 			wpa_supplicant_state_txt(wpa_s->wpa_state));
+#ifdef TI_CCX
+		if (!is_zero_ether_addr(wpa_s->bssid)) {
+			wpa_s->ccx_roaming = 1;
+		} else
+			wpa_s->ccx_roaming = 0;
+#endif
 		wpa_supplicant_associate(wpa_s, selected, ssid);
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Already associated with the "
@@ -1297,8 +1307,16 @@ static int wpa_supplicant_event_associnfo(struct wpa_supplicant *wpa_s,
 		if ((p[0] == WLAN_EID_VENDOR_SPECIFIC && p[1] >= 6 &&
 		     (os_memcmp(&p[2], "\x00\x50\xF2\x01\x01\x00", 6) == 0)) ||
 		    (p[0] == WLAN_EID_RSN && p[1] >= 2)) {
-			if (wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, p, len))
+#ifdef TI_CCX
+			wpa_printf (MSG_DEBUG,"CCKM: Saving aside WPA-IE");
+			if ( -1 == ccx_save_wpa_ie(wpa_s->wpa, p, len) ) {
 				break;
+			}
+#endif /* TI_CCX */
+			if (wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, p, len)) {
+				break;
+			}
+
 			found = 1;
 			wpa_find_assoc_pmkid(wpa_s);
 			break;
@@ -1422,6 +1440,11 @@ static int wpa_supplicant_event_associnfo(struct wpa_supplicant *wpa_s,
 
 	wpa_s->assoc_freq = data->assoc_info.freq;
 
+#ifdef TI_CCX
+	wpa_printf (MSG_DEBUG,"CCX: Parsing CCKM Response");
+	ccx_parse_cckm_response(wpa_s, data->assoc_info.resp_ies, data->assoc_info.resp_ies_len);
+	wpa_s->wpa->ccx.ccx_version = ccx_parse_version(data->assoc_info.resp_ies, data->assoc_info.resp_ies_len);
+#endif /* TI_CCX */
 	return 0;
 }
 
@@ -1565,7 +1588,20 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 	/* 802.1X::portControl = Auto */
 	eapol_sm_notify_portEnabled(wpa_s->eapol, TRUE);
 	wpa_s->eapol_received = 0;
-	if (wpa_s->key_mgmt == WPA_KEY_MGMT_NONE ||
+
+	if ( 0 ) {
+#ifdef TI_CCX
+	} else if ((wpa_s->wpa->ccx.cckm_available == 1) &&
+			  (ccx_event_cckm_assoc_handler(wpa_s) == 1)) {
+		wpa_printf(MSG_DEBUG,"CCKM: About to open ports");
+		/*eapol_sm_notify_eap_success(wpa_s->eapol, FALSE);*/
+		wpa_supplicant_cancel_auth_timeout(wpa_s);
+		wpa_supplicant_set_state(wpa_s, WPA_COMPLETED);
+		eapol_sm_notify_portValid(wpa_s->eapol, TRUE);
+		eapol_sm_notify_eap_success(wpa_s->eapol, TRUE);
+		wpa_printf(MSG_DEBUG,"CCKM: Ports are open :-)");
+#endif /* TI_CCX */
+	} else if (wpa_s->key_mgmt == WPA_KEY_MGMT_NONE ||
 	    wpa_s->key_mgmt == WPA_KEY_MGMT_WPA_NONE ||
 	    (wpa_s->current_ssid &&
 	     wpa_s->current_ssid->mode == IEEE80211_MODE_IBSS)) {
@@ -1654,6 +1690,23 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_IBSS_RSN */
 }
 
+#ifdef TI_CCX
+static void ccx_rogueap_associate_timeout(void * pEloopCtx, void * pTimeoutCtx)
+{
+	struct wpa_supplicant *pstWpaSupp = pEloopCtx;
+	struct wpa_ssid *pstSsid = NULL;
+
+    pstSsid = pstWpaSupp->conf->ssid;
+	while ( NULL != pstSsid ) {
+		if (FALSE != pstSsid->leap) {
+			wpa_msg(pstWpaSupp, MSG_DEBUG, "CCX: not associated for 60 seconds - clear Rogue AP list");
+            ccx_rogueap_clean_list(pstWpaSupp);
+			break;
+		}
+		pstSsid = pstSsid->next;
+	}
+}
+#endif /* TI_CCX */
 
 static int disconnect_reason_recoverable(u16 reason_code)
 {
@@ -1750,6 +1803,9 @@ static void wpa_supplicant_event_disassoc(struct wpa_supplicant *wpa_s,
 		wpa_clear_keys(wpa_s, wpa_s->bssid);
 	}
 	wpa_supplicant_mark_disassoc(wpa_s);
+	#ifdef TI_CCX
+    eloop_register_timeout(CCX_ROGUEAP_TIMEOUT, 0, ccx_rogueap_associate_timeout, wpa_s, NULL);
+#endif /* TI_CCX */
 
 	if (authenticating && (wpa_s->drv_flags & WPA_DRIVER_FLAGS_SME))
 		sme_disassoc_while_authenticating(wpa_s, prev_pending_bssid);

@@ -17,6 +17,10 @@ struct wpa_sm;
 struct eapol_sm;
 struct wpa_config_blob;
 
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#endif /* TI_CCX */
+
 struct wpa_sm_ctx {
 	void *ctx; /* pointer to arbitrary upper level context */
 	void *msg_ctx; /* upper level context for wpa_msg() calls */
@@ -76,6 +80,9 @@ enum wpa_sm_conf_params {
 	WPA_PARAM_MGMT_GROUP,
 	WPA_PARAM_RSN_ENABLED,
 	WPA_PARAM_MFP
+#ifdef TI_CCX
+	, WPA_PARAM_CCKM_AVAILABLE
+#endif /* TI_CCX */
 };
 
 struct rsn_supp_config {
@@ -136,6 +143,9 @@ int wpa_sm_has_ptk(struct wpa_sm *sm);
 void wpa_sm_update_replay_ctr(struct wpa_sm *sm, const u8 *replay_ctr);
 
 void wpa_sm_pmksa_cache_flush(struct wpa_sm *sm, void *network_ctx);
+
+int wpa_supplicant_check_group_cipher(struct wpa_sm *sm, int group_cipher,
+		int keylen, int maxkeylen, int *key_rsc_len, enum wpa_alg *alg);
 
 #else /* CONFIG_NO_WPA */
 

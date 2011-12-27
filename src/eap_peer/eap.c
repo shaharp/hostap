@@ -26,6 +26,9 @@
 #include "eap_common/eap_wsc_common.h"
 #include "eap_i.h"
 #include "eap_config.h"
+#ifdef TI_CCX
+#include "ccx/ccx_rogue_ap.h"
+#endif /* TI_CCX */
 
 #define STATE_MACHINE_DATA struct eap_sm
 #define STATE_MACHINE_DEBUG_PREFIX "EAP"
@@ -483,6 +486,12 @@ SM_STATE(EAP, SUCCESS)
 
 	wpa_msg(sm->msg_ctx, MSG_INFO, WPA_EVENT_EAP_SUCCESS
 		"EAP authentication completed successfully");
+
+#ifdef TI_CCX
+    if (sm->selectedMethod == EAP_TYPE_LEAP) {
+        ccx_rogueap_remove_self(sm->msg_ctx);
+    }
+#endif /* TI_CCX */
 }
 
 
@@ -513,6 +522,11 @@ SM_STATE(EAP, FAILURE)
 		"EAP authentication failed");
 
 	sm->prev_failure = 1;
+#ifdef TI_CCX
+	if (sm->selectedMethod == EAP_TYPE_LEAP) {
+		ccx_rogueap_add_self(sm->msg_ctx, CCX_ROGUEAP_FAIL_REASON_FAUTH_FAILED);
+	}
+#endif /* TI_CCX */
 }
 
 

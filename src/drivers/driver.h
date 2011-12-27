@@ -29,6 +29,13 @@
 #define HOSTAPD_CHAN_HT40MINUS 0x00000020
 #define HOSTAPD_CHAN_HT40 0x00000040
 
+#ifdef TI_CCX
+typedef struct _cckm_start {
+	u8 timestamp[8];
+	u8 bssid[ETH_ALEN];
+} cckm_start_t;
+#endif  /*TI_CCX*/
+
 /**
  * struct hostapd_channel_data - Channel information
  */
@@ -537,6 +544,25 @@ struct wpa_driver_associate_params {
 	 */
 	const u8 *htcaps;       /* struct ieee80211_ht_capabilities * */
 	const u8 *htcaps_mask;  /* struct ieee80211_ht_capabilities * */
+
+#ifdef TI_CCX
+	/**
+	 * cckm_ie - CCKM information element for ReAssociation Request
+	 * CCKM information element to be included in (Re)Association
+	 * Request (including information element id and length).
+	 * This IE should be set when in re association when the
+	 * key_mgmt_suite is set to CCKM by the AP.
+	 * A response CCKM IE should be returned by the AP in the
+	 * Re association response
+	 *
+	 */
+	const u8 *cckm_ie;
+
+	/**
+	 * cckm_ie_len - length of the cckm_ie
+	 */
+	size_t cckm_ie_len;
+#endif /* TI_CCX */
 };
 
 enum hide_ssid {
@@ -2552,6 +2578,54 @@ struct wpa_driver_ops {
 	 * Returns: 0 on success, -1 on failure
 	 */
 	 int (*driver_cmd)(void *priv, char *cmd, char *buf, size_t buf_len);
+
+#ifdef TI_CCX
+    /**
+     * update_cckm_request - change the reassociation IE for CCKM
+     *
+     * Update driver buffer for IEs
+     */
+    void (*update_cckm_request)(void *priv, int fastHandoff, int reassociationIEReqLength, u8* reassociationIE);
+
+	/**
+	 * ccx_rogueap_add - Adds target AP to RogueAP list
+	 * @pPriv: private driver interface data from init()
+	 * @pbBssid: BSSID of the new Rogue AP
+	 * @wReason: Reason to be banned
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * Calles Driver's
+	 */
+	int (*ccx_rogueap_add)(void *pPriv, const unsigned char * pbBssid, const unsigned short wReason);
+
+	/**
+	 * ccx_rogueap_remove - Removes target AP from RogueAP
+	 * @pPriv: private driver interface data from init()
+	 * @pbBssid: BSSID of the AP to remove
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * Calls Driver's
+	 */
+	int (*ccx_rogueap_remove)(void *pPriv, const unsigned char * pbBssid);
+
+	/**
+	 * ccx_rogueap_clean_list - Cleans all RogueAps
+	 * @pPriv: private driver interface data
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * Calls Driver's
+	 */
+	int (*ccx_rogueap_clean_list)(void *pPriv);
+
+	/**
+	 * ccx_rogueap_send_list - Sends RogueAP List out
+	 * @pPriv: private driver interface data
+	 * Returns: 0 on success, -1 on failure
+	 *
+	 * Calls Driver's
+	 */
+	int (*ccx_rogueap_send_list)(void *pPriv);
+#endif /* TI_CCX */
 };
 
 
@@ -3594,6 +3668,10 @@ union wpa_event_data {
 		int data_len;
 		int ack;
 	} eapol_tx_status;
+
+#ifdef TI_CCX
+	cckm_start_t cckm_start;
+#endif /* TI_CCX */
 };
 
 /**

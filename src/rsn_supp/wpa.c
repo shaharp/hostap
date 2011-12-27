@@ -21,7 +21,9 @@
 #include "wpa_i.h"
 #include "wpa_ie.h"
 #include "peerkey.h"
-
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#endif /* TI_CCX */
 
 /**
  * wpa_eapol_key_send - Send WPA/RSN EAPOL-Key message
@@ -356,10 +358,21 @@ static int wpa_derive_ptk(struct wpa_sm *sm, const unsigned char *src_addr,
 		return wpa_derive_ptk_ft(sm, src_addr, key, ptk, ptk_len);
 #endif /* CONFIG_IEEE80211R */
 
+	if (0) {
+#ifdef TI_CCX
+	} else if (sm->ccx.cckm_available == 1) {
+		sm->ccx.RN=1;
+		wpa_printf(MSG_DEBUG, "WPA: BSSID - A1=" MACSTR,
+				MAC2STR(src_addr));
+		ccx_btk_to_ptk(sm->ccx.gk.btk,sizeof(sm->ccx.gk.btk),sm->ccx.RN,src_addr,
+				(u8 *) ptk, ptk_len);
+#endif /* TI_CCX */
+	} else {
 	wpa_pmk_to_ptk(sm->pmk, sm->pmk_len, "Pairwise key expansion",
 		       sm->own_addr, sm->bssid, sm->snonce, key->key_nonce,
 		       (u8 *) ptk, ptk_len,
 		       wpa_key_mgmt_sha256(sm->key_mgmt));
+	}
 	return 0;
 }
 
@@ -373,7 +386,13 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 	struct wpa_ptk *ptk;
 	u8 buf[8];
 	int res;
-
+#ifdef TI_CCX
+	struct wpa_gk *gk = NULL;
+	u8 sfa_ie[80] = {0};
+	int sfa_ie_len = 0;
+	u8 ccx_ie[80] = {0};
+	int ccx_ie_len = 0;
+#endif /* TI_CCX */
 	if (wpa_sm_get_network_ctx(sm) == NULL) {
 		wpa_msg(sm->ctx->msg_ctx, MSG_WARNING, "WPA: No SSID info "
 			"found (msg 1 of 4)");
@@ -421,6 +440,57 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 			    sm->snonce, WPA_NONCE_LEN);
 	}
 
+	if (0) {
+#ifdef TI_CCX
+	} else if (sm->ccx.cckm_available == 1) {
+		/* Calculate key material out of NSK for CCKM procedure */
+		gk = &sm->ccx.gk;
+
+		ccx_derive_gk(sm,src_addr,key,gk);
+		ptk = &sm->tptk;
+		wpa_derive_ptk(sm,src_addr,key,ptk);
+
+		/* Supplicant: swap tx/rx Mic keys */
+		os_memcpy(buf, ptk->u.auth.tx_mic_key, 8);
+		os_memcpy(ptk->u.auth.tx_mic_key, ptk->u.auth.rx_mic_key, 8);
+		os_memcpy(ptk->u.auth.rx_mic_key, buf, 8);
+		sm->tptk_set = 1;
+
+		sfa_ie_len = ccx_get_sfa_ie(sm, sfa_ie, 0);
+		ccx_ie_len = ccx_get_ccx_ie(sm, ccx_ie, 0);
+		if ( (ccx_get_sfa_ie(sm, sfa_ie, sizeof(sfa_ie)) == 0) &&
+				(ccx_get_ccx_ie(sm, ccx_ie, sizeof(ccx_ie)) == 0) ) {
+
+			wpa_printf(MSG_ERROR,"CCKM: In calculating combined ie\n");
+			if (sm->ccx.combined_ie) {
+				os_free(sm->ccx.combined_ie);
+			}
+			sm->ccx.combined_ie_len = sfa_ie_len + ccx_ie_len +
+			sm->assoc_wpa_ie_len;
+			sm->ccx.combined_ie = os_malloc(sm->ccx.combined_ie_len);
+			if (sm->ccx.combined_ie == NULL) {
+				return;
+			}
+			memcpy(sm->ccx.combined_ie,
+					sm->assoc_wpa_ie, sm->assoc_wpa_ie_len);
+			memcpy(sm->ccx.combined_ie + sm->assoc_wpa_ie_len,
+					sfa_ie, sfa_ie_len);
+			memcpy(sm->ccx.combined_ie + sm->assoc_wpa_ie_len + sfa_ie_len,
+					ccx_ie, ccx_ie_len);
+
+			wpa_printf (MSG_ERROR,"CCKM: going to send packet 2 of 4\n");
+			if (wpa_supplicant_send_2_of_4(sm, sm->bssid, key, ver,
+							sm->snonce,
+							sm->ccx.combined_ie, sm->ccx.combined_ie_len,
+							(struct wpa_ptk*)gk))
+			goto failed;
+
+		} else if (wpa_supplicant_send_2_of_4(sm, sm->bssid, key, ver, sm->snonce,
+						sm->assoc_wpa_ie, sm->assoc_wpa_ie_len,(struct wpa_ptk*)gk)) {
+			goto failed;
+		}
+#endif /* TI_CCX */
+	} else {
 	/* Calculate PTK which will be stored as a temporary PTK until it has
 	 * been verified when processing message 3/4. */
 	ptk = &sm->tptk;
@@ -435,6 +505,7 @@ static void wpa_supplicant_process_1_of_4(struct wpa_sm *sm,
 				       sm->assoc_wpa_ie, sm->assoc_wpa_ie_len,
 				       ptk))
 		goto failed;
+	}
 
 	os_memcpy(sm->anonce, key->key_nonce, WPA_NONCE_LEN);
 	return;
@@ -562,7 +633,7 @@ static int wpa_supplicant_install_ptk(struct wpa_sm *sm,
 }
 
 
-static int wpa_supplicant_check_group_cipher(struct wpa_sm *sm,
+int wpa_supplicant_check_group_cipher(struct wpa_sm *sm,
 					     int group_cipher,
 					     int keylen, int maxkeylen,
 					     int *key_rsc_len,
@@ -1158,11 +1229,63 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
 	}
 	wpa_sm_set_state(sm, WPA_GROUP_HANDSHAKE);
 
-	if (ie.gtk &&
-	    wpa_supplicant_pairwise_gtk(sm, key,
-					ie.gtk, ie.gtk_len, key_info) < 0) {
-		wpa_msg(sm->ctx->msg_ctx, MSG_INFO,
-			"RSN: Failed to configure GTK");
+#ifdef TI_CCX
+	if (sm->ccx.combined_ie) {
+		const u8 *p = pos;
+		size_t l = len;
+
+		/* Go through the IEs and make a sure SFA IE is present. */
+		while (p && l >= 2) {
+			if (len > l) {
+				wpa_hexdump(MSG_DEBUG, "Truncated IE in key",p, l);
+				break;
+			}
+			if ((p[0] == WLAN_EID_VENDOR_SPECIFIC && p[1] >= 5 &&
+							(memcmp(&p[2], "\x00\x40\x96\x14", 4) == 0))) {
+				u8 sfa_ie[80];
+				int sfa_ie_len;
+				sfa_ie_len = ccx_get_sfa_ie(sm->ctx->ctx, sfa_ie, 0);
+				if ( ccx_get_sfa_ie(sm->ctx->ctx, sfa_ie, sizeof(sfa_ie)) != 0 ) {
+					wpa_printf(MSG_ERROR, "WPA: Couldn't get SFA IE\n");
+					return;
+				}
+
+				if (memcmp(sfa_ie, p, sfa_ie_len)) {
+					wpa_printf(MSG_WARNING, "WPA: SFA IE "
+							"mismatch");
+					wpa_printf(MSG_ERROR, "WPA: SFA IE "
+							"mismatch");
+
+					return;
+				}
+				break;
+			}
+			l -= len;
+			p += len;
+		}
+
+		/* Go through the IEs and make a sure CCX IE version is ok. */
+		while (p && l >= 2) {
+			if (len > l) {
+				wpa_hexdump(MSG_DEBUG, "Truncated IE in key",p, l);
+				break;
+			}
+			if ((p[0] == WLAN_EID_VENDOR_SPECIFIC && p[1] == 5 &&
+							(memcmp(&p[2], "\x00\x40\x96\x03", 4) == 0))) {
+				if (p[6] < 5) {
+					wpa_printf(MSG_ERROR, "WPA: CCX version mismatch in MFP exchange");
+					return;
+				}
+				break;
+			}
+			l -= len;
+			p += len;
+		}
+	}
+#endif /* TI_CCX */
+	if (ie.gtk && wpa_supplicant_pairwise_gtk(sm, key, ie.gtk, ie.gtk_len,
+			key_info) < 0) {
+		wpa_msg(sm->ctx->msg_ctx, MSG_INFO, "RSN: Failed to configure GTK");
 		goto failed;
 	}
 
@@ -2368,6 +2491,11 @@ int wpa_sm_set_param(struct wpa_sm *sm, enum wpa_sm_conf_params param,
 	case WPA_PARAM_MFP:
 		sm->mfp = value;
 		break;
+#ifdef TI_CCX
+		case WPA_PARAM_CCKM_AVAILABLE:
+		sm->ccx.cckm_available = value;
+		break;
+#endif /* TI_CCX */
 	default:
 		break;
 	}

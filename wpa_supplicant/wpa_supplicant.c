@@ -45,6 +45,11 @@
 #include "bss.h"
 #include "scan.h"
 #include "offchannel.h"
+#ifdef TI_CCX
+#include "ccx/ccx.h"
+#include "ccx/ccx_rogue_ap.h"
+#include "rsn_supp/wpa_i.h"
+#endif /* TI_CCX */
 
 const char *wpa_supplicant_version =
 "wpa_supplicant v" VERSION_STR "\n"
@@ -189,6 +194,11 @@ static void wpa_supplicant_timeout(void *eloop_ctx, void *timeout_ctx)
 	 * So, wait a second until scanning again.
 	 */
 	wpa_supplicant_req_scan(wpa_s, 1, 0);
+#ifdef TI_CCX
+    if ( (NULL != wpa_s->current_ssid) && (FALSE != wpa_s->current_ssid->leap) ) {
+        ccx_rogueap_add_self(wpa_s, CCX_ROGUEAP_FAIL_REASON_AUTH_TIMEOUT);
+    }
+#endif /* TI_CCX */
 }
 
 
@@ -952,6 +962,24 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 			proto = ie.proto;
 	}
 
+#ifdef TI_CCX
+		/* check if AP supports CCKM */
+		if (ie.key_mgmt & (KEY_MGMT_CCKM_BIT))
+		{
+			wpa_s->cckm_available = 1;
+			wpa_printf (MSG_DEBUG,"CCKM: AP supports CCKM");
+		}
+		else
+		{
+			wpa_s->cckm_available = 0;
+			wpa_printf (MSG_DEBUG,"CCKM: AP does not support CCKM");
+		}
+
+		/* update wpa_sm about CCKM support of this AP  */
+		wpa_sm_set_param(wpa_s->wpa, WPA_PARAM_CCKM_AVAILABLE, wpa_s->cckm_available);
+#endif /* TI_CCX */
+
+
 	wpa_dbg(wpa_s, MSG_DEBUG, "WPA: Selected cipher suites: group %d "
 		"pairwise %d key_mgmt %d proto %d",
 		ie.group_cipher, ie.pairwise_cipher, ie.key_mgmt, proto);
@@ -1001,6 +1029,23 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 	} else if (sel & WPA_CIPHER_TKIP) {
 		wpa_s->pairwise_cipher = WPA_CIPHER_TKIP;
 		wpa_dbg(wpa_s, MSG_DEBUG, "WPA: using PTK TKIP");
+#ifdef TI_CCX
+	} else if (sel & WPA_CIPHER_CKIP_CMIC) {
+		wpa_s->pairwise_cipher = WPA_CIPHER_CKIP_CMIC;
+		wpa_msg(wpa_s, MSG_ERROR, "WPA: using PTK CKIP+CMIC");
+	} else if (sel & WPA_CIPHER_CKIP) {
+		wpa_s->pairwise_cipher = WPA_CIPHER_CKIP;
+		wpa_msg(wpa_s, MSG_ERROR, "WPA: using PTK CKIP");
+	} else if (sel & WPA_CIPHER_CMIC) {
+		wpa_s->pairwise_cipher = WPA_CIPHER_CMIC;
+		wpa_msg(wpa_s, MSG_ERROR, "WPA: using PTK CMIC");
+	} else if (sel & WPA_CIPHER_WEP104) {
+		wpa_s->pairwise_cipher = WPA_CIPHER_WEP104;
+		wpa_msg(wpa_s, MSG_ERROR, "WPA: using PTK WEP104");
+	} else if (sel & WPA_CIPHER_WEP40) {
+		wpa_s->pairwise_cipher = WPA_CIPHER_WEP40;
+		wpa_msg(wpa_s, MSG_ERROR, "WPA: using PTK WEP40");
+#endif /* TI_CCX */
 	} else if (sel & WPA_CIPHER_NONE) {
 		wpa_s->pairwise_cipher = WPA_CIPHER_NONE;
 		wpa_dbg(wpa_s, MSG_DEBUG, "WPA: using PTK NONE");
@@ -1012,6 +1057,11 @@ int wpa_supplicant_set_suites(struct wpa_supplicant *wpa_s,
 
 	sel = ie.key_mgmt & ssid->key_mgmt;
 	if (0) {
+#ifdef TI_CCX
+	} else if (wpa_s->cckm_available == 1) {
+		wpa_s->key_mgmt = WPA_KEY_MGMT_IEEE8021X;
+		wpa_msg(wpa_s, MSG_DEBUG, "WPA: using KEY_MGMT 802.1X(CCKM)");
+#endif /* TI_CCX */
 #ifdef CONFIG_IEEE80211R
 	} else if (sel & WPA_KEY_MGMT_FT_IEEE8021X) {
 		wpa_s->key_mgmt = WPA_KEY_MGMT_FT_IEEE8021X;
@@ -1106,6 +1156,10 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 {
 	u8 wpa_ie[200];
 	size_t wpa_ie_len;
+#ifdef TI_CCX
+	u8 *ccx_ies = NULL;
+	size_t ccx_ies_len = 0;
+#endif /* TI_CCX */
 	int use_crypt, ret, i, bssid_changed;
 	int algs = WPA_AUTH_ALG_OPEN;
 	enum wpa_cipher cipher_pairwise, cipher_group;
@@ -1236,6 +1290,16 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
 				"key management and encryption suites");
 			return;
 		}
+#ifdef TI_CCX
+		if (wpa_s->cckm_available == 1) {
+			ccx_ies = ccx_event_cckm_start_handler(wpa_s, (BYTE*)&bss->tsf, bss->bssid,
+					&ccx_ies_len);
+			if (ccx_ies_len == 0)
+				wpa_msg(wpa_s, MSG_ERROR, "Failed building CCKM IE, len = %d", ccx_ies_len);
+			else
+				wpa_msg(wpa_s, MSG_ERROR, "Finished building CCKM IE");
+		}
+#endif /* TI_CCX */
 	} else if (wpa_key_mgmt_wpa_any(ssid->key_mgmt)) {
 		wpa_ie_len = sizeof(wpa_ie);
 		if (wpa_supplicant_set_suites(wpa_s, NULL, ssid,
@@ -2213,6 +2277,14 @@ int wpa_supplicant_driver_init(struct wpa_supplicant *wpa_s)
 		}
 	}
 
+#ifdef TI_CCX
+	if (ccx_init(wpa_s, wpa_drv_get_mac_addr(wpa_s)) < 0) {
+		wpa_msg(wpa_s, MSG_ERROR, "Failed to initialize CCX module");
+		return -1;
+	}
+
+#endif /* TI_CCX */
+
 	wpa_clear_keys(wpa_s, NULL);
 
 	/* Make sure that TKIP countermeasures are not left enabled (could
@@ -2726,6 +2798,9 @@ static void wpa_supplicant_deinit_iface(struct wpa_supplicant *wpa_s,
 
 	wpa_supplicant_cleanup(wpa_s);
 
+#ifdef TI_CCX
+	ccx_deinit_ies(wpa_s->wpa);
+#endif /* TI_CCX */
 	if (wpa_s->drv_priv)
 		wpa_drv_deinit(wpa_s);
 

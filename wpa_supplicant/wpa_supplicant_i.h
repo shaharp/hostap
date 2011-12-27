@@ -9,6 +9,10 @@
 #ifndef WPA_SUPPLICANT_I_H
 #define WPA_SUPPLICANT_I_H
 
+#ifdef TI_CCX
+#include "ccx/ccx_rogue_ap.h"
+#endif /* TI_CCX */
+
 #include "utils/list.h"
 #include "common/defs.h"
 #include "config_ssid.h"
@@ -31,6 +35,9 @@ struct wpa_bss;
 struct wpa_scan_results;
 struct hostapd_hw_modes;
 struct wpa_driver_associate_params;
+#ifdef TI_CCX
+struct CCX_ROGUEAP_LIST_s;
+#endif /* TI_CCX */
 
 /*
  * Forward declarations of private structures used within the ctrl_iface
@@ -567,6 +574,12 @@ struct wpa_supplicant {
 	} hw;
 
 	int pno;
+
+#ifdef TI_CCX
+	int cckm_available;
+	struct CCX_ROGUEAP_LIST_s * pstRogueApList;
+	int ccx_roaming;
+#endif /* TI_CCX */
 };
 
 
