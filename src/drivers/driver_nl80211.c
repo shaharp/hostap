@@ -8773,6 +8773,7 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 	struct nl_msg *msg, *pats = NULL;
 	struct nlattr *wowtrig, *pat;
 	int i, ret = -1;
+	int filters;
 
 	bss->drv->wowlan_enabled = !!enable;
 
@@ -8800,12 +8801,17 @@ static int nl80211_set_wowlan_triggers(struct i802_bss *bss, int enable)
 			goto nla_put_failure;
 		}
 
+		/* In ginger filter 0 and 1 are always set but in ICS they
+		   were completely removed. Make sure to always set them
+		   otherwise unicast and bcast are dropped */
+		filters = bss->drv->wowlan_triggers |= 3;
+
 		for (i = 0; i < NR_RX_FILTERS; i++) {
 			struct rx_filter *rx_filter = &rx_filters[i];
 			int patnr = 1;
 			u8 *pattern;
 
-			if (!(bss->drv->wowlan_triggers & (1 << i)))
+			if (!(filters & (1 << i)))
 				continue;
 
 			pattern = nl80211_rx_filter_get_pattern(rx_filter, bss);
