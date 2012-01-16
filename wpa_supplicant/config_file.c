@@ -847,6 +847,18 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
 #endif /* CONFIG_INTERWORKING */
 	if (config->pbc_in_m1)
 		fprintf(f, "pbc_in_m1=%u\n", config->pbc_in_m1);
+	if (config->sched_scan_num_short_intervals !=
+	    DEFAULT_SCHED_SCAN_NUM_SHORT_INTERVALS)
+		fprintf(f, "sched_scan_num_short_intervals=%u\n",
+			config->sched_scan_num_short_intervals);
+	if (config->sched_scan_short_interval !=
+	    DEFAULT_SCHED_SCAN_SHORT_INTERVAL)
+		fprintf(f, "sched_scan_short_interval=%u\n",
+			config->sched_scan_short_interval);
+	if (config->sched_scan_long_interval !=
+	    DEFAULT_SCHED_SCAN_LONG_INTERVAL)
+		fprintf(f, "sched_scan_long_intervals=%u\n",
+			config->sched_scan_long_interval);
 }
 
 #endif /* CONFIG_NO_CONFIG_WRITE */
