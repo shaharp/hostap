@@ -156,23 +156,21 @@
  * @NL80211_CMD_DEL_KEY: delete a key identified by %NL80211_ATTR_KEY_IDX
  *	or %NL80211_ATTR_MAC.
  *
- * @NL80211_CMD_GET_BEACON: (not used)
- * @NL80211_CMD_SET_BEACON: change the beacon on an access point interface
- *	using the %NL80211_ATTR_BEACON_HEAD and %NL80211_ATTR_BEACON_TAIL
- *	attributes. For drivers that generate the beacon and probe responses
- *	internally, the following attributes must be provided: %NL80211_ATTR_IE,
- *	%NL80211_ATTR_IE_PROBE_RESP and %NL80211_ATTR_IE_ASSOC_RESP.
- * @NL80211_CMD_START_AP: Start AP operation on an AP interface, parameters
- *	are like for %NL80211_CMD_SET_BEACON, and additionally parameters that
- *	do not change are used, these include %NL80211_ATTR_BEACON_INTERVAL,
- *	%NL80211_ATTR_DTIM_PERIOD, %NL80211_ATTR_SSID,
+ * @NL80211_CMD_GET_BEACON: retrieve beacon information (returned in a
+ *	%NL80222_CMD_NEW_BEACON message)
+ * @NL80211_CMD_SET_BEACON: set the beacon on an access point interface
+ *	using the %NL80211_ATTR_BEACON_INTERVAL, %NL80211_ATTR_DTIM_PERIOD,
+ *	%NL80211_ATTR_BEACON_HEAD and %NL80211_ATTR_BEACON_TAIL attributes.
+ *	Following attributes are provided for drivers that generate full Beacon
+ *	and Probe Response frames internally: %NL80211_ATTR_SSID,
  *	%NL80211_ATTR_HIDDEN_SSID, %NL80211_ATTR_CIPHERS_PAIRWISE,
  *	%NL80211_ATTR_CIPHER_GROUP, %NL80211_ATTR_WPA_VERSIONS,
  *	%NL80211_ATTR_AKM_SUITES, %NL80211_ATTR_PRIVACY,
- *	%NL80211_ATTR_AUTH_TYPE and %NL80211_ATTR_INACTIVITY_TIMEOUT.
- * @NL80211_CMD_NEW_BEACON: old alias for %NL80211_CMD_START_AP
- * @NL80211_CMD_STOP_AP: Stop AP operation on the given interface
- * @NL80211_CMD_DEL_BEACON: old alias for %NL80211_CMD_STOP_AP
+ *	%NL80211_ATTR_AUTH_TYPE, %NL80211_ATTR_IE, %NL80211_ATTR_IE_PROBE_RESP,
+ *	%NL80211_ATTR_IE_ASSOC_RESP.
+ * @NL80211_CMD_NEW_BEACON: add a new beacon to an access point interface,
+ *	parameters are like for %NL80211_CMD_SET_BEACON.
+ * @NL80211_CMD_DEL_BEACON: remove the beacon, stop sending it
  *
  * @NL80211_CMD_GET_STATION: Get station attributes for station identified by
  *	%NL80211_ATTR_MAC on the interface identified by %NL80211_ATTR_IFINDEX.
@@ -369,11 +367,6 @@
  *	%NL80211_ATTR_WIPHY_FREQ, %NL80211_ATTR_CONTROL_PORT,
  *	%NL80211_ATTR_CONTROL_PORT_ETHERTYPE and
  *	%NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT.
- *	Background scan period can optionally be
- *	specified in %NL80211_ATTR_BG_SCAN_PERIOD,
- *	if not specified default background scan configuration
- *	in driver is used and if period value is 0, bg scan will be disabled.
- *	This attribute is ignored if driver does not support roam scan.
  *	It is also sent as an event, with the BSSID and response IEs when the
  *	connection is established or failed to be established. This can be
  *	determined by the STATUS_CODE attribute.
@@ -548,10 +541,23 @@
  * @NL80211_CMD_SET_NOACK_MAP: sets a bitmap for the individual TIDs whether
  *      No Acknowledgement Policy should be applied.
  *
- * @NL80211_CMD_CH_SWITCH_NOTIFY: An AP or GO may decide to switch channels
- *	independently of the userspace SME, send this event indicating
- *	%NL80211_ATTR_IFINDEX is now on %NL80211_ATTR_WIPHY_FREQ with
- *	%NL80211_ATTR_WIPHY_CHANNEL_TYPE.
+ * @NL80211_CMD_SCAN_CANCEL: Stop currently running scan (both sw and hw).
+ *	This operation will eventually invoke %NL80211_CMD_SCAN_ABORTED
+ *	event, partial scan results will be available. Returns -ENOENT
+ *	if scan is not running.
+ *
+ * @NL80211_CMD_IM_SCAN_RESULT: Intermediate scan result notification event,
+ *	this event could be enabled with @NL80211_ATTR_IM_SCAN_RESULT
+ *	flag during @NL80211_CMD_TRIGGER_SCAN. This event contains
+ *	%NL80211_BSS_BSSID which is used to specify the BSSID of received
+ *	scan result and %NL80211_BSS_SIGNAL_MBM to indicate signal strength.
+ *	On reception of this notification, userspace may decide to stop earlier
+ *	currently running scan with (@NL80211_CMD_SCAN_CANCEL).
+ *
+ * @NL80211_CMD_ROAMING_SUPPORT: A notify event used to alert userspace
+ *      regarding changes in roaming support by the driver. If roaming is
+ *      disabled (marked by the presence of @NL80211_ATTR_ROAMING_DISABLED flag)
+ *      userspace should disable background scans and roaming attempts.
  *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
@@ -577,10 +583,8 @@ enum nl80211_commands {
 
 	NL80211_CMD_GET_BEACON,
 	NL80211_CMD_SET_BEACON,
-	NL80211_CMD_START_AP,
-	NL80211_CMD_NEW_BEACON = NL80211_CMD_START_AP,
-	NL80211_CMD_STOP_AP,
-	NL80211_CMD_DEL_BEACON = NL80211_CMD_STOP_AP,
+	NL80211_CMD_NEW_BEACON,
+	NL80211_CMD_DEL_BEACON,
 
 	NL80211_CMD_GET_STATION,
 	NL80211_CMD_SET_STATION,
@@ -694,7 +698,11 @@ enum nl80211_commands {
 
 	NL80211_CMD_SET_NOACK_MAP,
 
-	NL80211_CMD_CH_SWITCH_NOTIFY,
+	NL80211_CMD_SCAN_CANCEL,
+
+	NL80211_CMD_IM_SCAN_RESULT,
+
+	NL80211_CMD_ROAMING_SUPPORT,
 
 	/* add new commands above here */
 
@@ -1085,10 +1093,12 @@ enum nl80211_commands {
  *	indicate which WoW triggers should be enabled. This is also
  *	used by %NL80211_CMD_GET_WOWLAN to get the currently enabled WoWLAN
  *	triggers.
-
+ *
  * @NL80211_ATTR_SCHED_SCAN_INTERVAL: Interval between scheduled scan
- *	cycles, in msecs.
-
+ *	cycles, in msecs. If short interval is supported by the driver
+ *      and configured then this will be used only after the requested
+ *      number of short intervals
+ *
  * @NL80211_ATTR_SCHED_SCAN_MATCH: Nested attribute with one or more
  *	sets of attributes to match during scheduled scans.  Only BSSs
  *	that match any of the sets will be reported.  These are
@@ -1117,6 +1127,34 @@ enum nl80211_commands {
  *
  * @%NL80211_ATTR_REKEY_DATA: nested attribute containing the information
  *	necessary for GTK rekeying in the device, see &enum nl80211_rekey_data.
+ *
+ * @%NL80211_ATTR_IM_SCAN_RESULT: Flag attribute to enable intermediate
+ *	scan result notification event (%NL80211_CMD_IM_SCAN_RESULT)
+ *	for the %NL80211_CMD_TRIGGER_SCAN command.
+ *	When set: will notify on each new scan result in the cache.
+ * @%NL80211_ATTR_IM_SCAN_RESULT_MIN_RSSI: Intermediate event filtering.
+ *	When set: will notify only those new scan result whose signal
+ *	strength of probe response/beacon (in dBm) is stronger than this
+ *	negative value (usually: -20 dBm > X > -95 dBm).
+ *
+ * @%NL80211_ATTR_CAPABILITIES: Flags (u32) attribute to expose device
+ *	capabilities flags which defined in nl80211_device_capabilities.
+ *
+ * @%NL80211_ATTR_SCAN_MIN_DWELL: Minimum scan dwell time (in TUs), u32
+ *	attribute to setup minimum time to wait on each channel, if received
+ *	at least one probe response during this period will continue waiting
+ *	%NL80211_ATTR_SCAN_MAX_DWELL, otherwise will move to next channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_MAX_DWELL: Maximum scan dwell time (in TUs), u32
+ *	attribute to setup maximum time to wait on each channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_NUM_PROBE:  Attribute (u8) to setup number of probe
+ *	requests to transmit on each active scan channel, used with
+ *	%NL80211_CMD_TRIGGER_SCAN command.
  *
  * @NL80211_ATTR_SCAN_SUPP_RATES: rates per to be advertised as supported in scan,
  *	nested array attribute containing an entry for each band, with the entry
@@ -1209,18 +1247,12 @@ enum nl80211_commands {
  * @NL80211_ATTR_NOACK_MAP: This u16 bitmap contains the No Ack Policy of
  *      up to 16 TIDs.
  *
- * @NL80211_ATTR_INACTIVITY_TIMEOUT: timeout value in seconds, this can be
- *	used by the drivers which has MLME in firmware and does not have support
- *	to report per station tx/rx activity to free up the staion entry from
- *	the list. This needs to be used when the driver advertises the
- *	capability to timeout the stations.
- *
- * @NL80211_ATTR_RX_SIGNAL_DBM: signal strength in dBm (as a 32-bit int);
- *	this attribute is (depending on the driver capabilities) added to
- *	received frames indicated with %NL80211_CMD_FRAME.
- *
- * @NL80211_ATTR_BG_SCAN_PERIOD: Background scan period in seconds
- *      or 0 to disable background scan.
+ * @NL80211_ATTR_SCHED_SCAN_SHORT_INTERVAL: interval between
+ *      each short interval scheduled scan cycle in msecs.
+ * @NL80211_ATTR_SCHED_SCAN_NUM_SHORT_INTERVALS: number of short
+ *      sched scan intervals before switching to the long interval
+ * @NL80211_ATTR_ROAMING_DISABLED: indicates that the driver can't do roaming
+ *      currently.
  *
  * @NL80211_ATTR_MAX: highest attribute number currently defined
  * @__NL80211_ATTR_AFTER_LAST: internal use
@@ -1467,6 +1499,20 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_NOACK_MAP,
 
+	NL80211_ATTR_IM_SCAN_RESULT,
+	NL80211_ATTR_IM_SCAN_RESULT_MIN_RSSI,
+
+	NL80211_ATTR_CAPABILITIES,
+
+	NL80211_ATTR_SCAN_MIN_DWELL,
+	NL80211_ATTR_SCAN_MAX_DWELL,
+	NL80211_ATTR_SCAN_NUM_PROBE,
+
+	NL80211_ATTR_SCHED_SCAN_SHORT_INTERVAL,
+	NL80211_ATTR_SCHED_SCAN_NUM_SHORT_INTERVALS,
+
+	NL80211_ATTR_ROAMING_DISABLED,
+
 	NL80211_ATTR_INACTIVITY_TIMEOUT,
 
 	NL80211_ATTR_RX_SIGNAL_DBM,
@@ -1510,7 +1556,6 @@ enum nl80211_attrs {
 #define NL80211_ATTR_FEATURE_FLAGS NL80211_ATTR_FEATURE_FLAGS
 
 #define NL80211_MAX_SUPP_RATES			32
-#define NL80211_MAX_SUPP_HT_RATES		77
 #define NL80211_MAX_SUPP_REG_RULES		32
 #define NL80211_TKIP_DATA_OFFSET_ENCR_KEY	0
 #define NL80211_TKIP_DATA_OFFSET_TX_MIC_KEY	16
@@ -1578,6 +1623,7 @@ enum nl80211_iftype {
  *	attempts to change it will silently be ignored (rather than rejected
  *	as errors.)
  * @NL80211_STA_FLAG_MAX: highest station flag number currently defined
+ * @NL80211_STA_FLAG_PRE_ASSOC: station is pre-associated
  * @__NL80211_STA_FLAG_AFTER_LAST: internal use
  */
 enum nl80211_sta_flags {
@@ -1588,6 +1634,7 @@ enum nl80211_sta_flags {
 	NL80211_STA_FLAG_MFP,
 	NL80211_STA_FLAG_AUTHENTICATED,
 	NL80211_STA_FLAG_TDLS_PEER,
+	NL80211_STA_FLAG_PRE_ASSOC,
 
 	/* keep last */
 	__NL80211_STA_FLAG_AFTER_LAST,
@@ -1692,7 +1739,6 @@ enum nl80211_sta_bss_param {
  * @NL80211_STA_INFO_CONNECTED_TIME: time since the station is last connected
  * @NL80211_STA_INFO_STA_FLAGS: Contains a struct nl80211_sta_flag_update.
  * @NL80211_STA_INFO_BEACON_LOSS: count of times beacon loss was detected (u32)
- * @NL80211_STA_INFO_T_OFFSET: timing offset with respect to this STA (s64)
  * @__NL80211_STA_INFO_AFTER_LAST: internal
  * @NL80211_STA_INFO_MAX: highest possible station info attribute
  */
@@ -1716,7 +1762,6 @@ enum nl80211_sta_info {
 	NL80211_STA_INFO_CONNECTED_TIME,
 	NL80211_STA_INFO_STA_FLAGS,
 	NL80211_STA_INFO_BEACON_LOSS,
-	NL80211_STA_INFO_T_OFFSET,
 
 	/* keep last */
 	__NL80211_STA_INFO_AFTER_LAST,
@@ -2142,17 +2187,7 @@ enum nl80211_mntr_flags {
  * TUs) during which a mesh STA can send only one Action frame containing a
  * PERR element.
  *
- * @NL80211_MESHCONF_FORWARDING: set Mesh STA as forwarding or non-forwarding
- * or forwarding entity (default is TRUE - forwarding entity)
- *
- * @NL80211_MESHCONF_RSSI_THRESHOLD: RSSI threshold in dBm. This specifies the
- * threshold for average signal strength of candidate station to establish
- * a peer link.
- *
  * @NL80211_MESHCONF_ATTR_MAX: highest possible mesh configuration attribute
- *
- * @NL80211_MESHCONF_SYNC_OFFSET_MAX_NEIGHBOR: maximum number of neighbors
- * to synchronize to for 11s default synchronization method (see 11C.12.2.2)
  *
  * @__NL80211_MESHCONF_ATTR_AFTER_LAST: internal use
  */
@@ -2176,9 +2211,6 @@ enum nl80211_meshconf_params {
 	NL80211_MESHCONF_HWMP_RANN_INTERVAL,
 	NL80211_MESHCONF_GATE_ANNOUNCEMENTS,
 	NL80211_MESHCONF_HWMP_PERR_MIN_INTERVAL,
-	NL80211_MESHCONF_FORWARDING,
-	NL80211_MESHCONF_RSSI_THRESHOLD,
-	NL80211_MESHCONF_SYNC_OFFSET_MAX_NEIGHBOR,
 
 	/* keep last */
 	__NL80211_MESHCONF_ATTR_AFTER_LAST,
@@ -2218,11 +2250,6 @@ enum nl80211_meshconf_params {
  * complete (unsecured) mesh peering without the need of a userspace daemon.
  *
  * @NL80211_MESH_SETUP_ATTR_MAX: highest possible mesh setup attribute number
- *
- * @NL80211_MESH_SETUP_ENABLE_VENDOR_SYNC: Enable this option to use a
- * vendor specific synchronization method or disable it to use the default
- * neighbor offset synchronization
- *
  * @__NL80211_MESH_SETUP_ATTR_AFTER_LAST: Internal use
  */
 enum nl80211_mesh_setup_params {
@@ -2232,7 +2259,6 @@ enum nl80211_mesh_setup_params {
 	NL80211_MESH_SETUP_IE,
 	NL80211_MESH_SETUP_USERSPACE_AUTH,
 	NL80211_MESH_SETUP_USERSPACE_AMPE,
-	NL80211_MESH_SETUP_ENABLE_VENDOR_SYNC,
 
 	/* keep last */
 	__NL80211_MESH_SETUP_ATTR_AFTER_LAST,
@@ -2242,7 +2268,7 @@ enum nl80211_mesh_setup_params {
 /**
  * enum nl80211_txq_attr - TX queue parameter attributes
  * @__NL80211_TXQ_ATTR_INVALID: Attribute number 0 is reserved
- * @NL80211_TXQ_ATTR_AC: AC identifier (NL80211_AC_*)
+ * @NL80211_TXQ_ATTR_QUEUE: TX queue identifier (NL80211_TXQ_Q_*)
  * @NL80211_TXQ_ATTR_TXOP: Maximum burst time in units of 32 usecs, 0 meaning
  *	disabled
  * @NL80211_TXQ_ATTR_CWMIN: Minimum contention window [a value of the form
@@ -2255,7 +2281,7 @@ enum nl80211_mesh_setup_params {
  */
 enum nl80211_txq_attr {
 	__NL80211_TXQ_ATTR_INVALID,
-	NL80211_TXQ_ATTR_AC,
+	NL80211_TXQ_ATTR_QUEUE,
 	NL80211_TXQ_ATTR_TXOP,
 	NL80211_TXQ_ATTR_CWMIN,
 	NL80211_TXQ_ATTR_CWMAX,
@@ -2266,20 +2292,12 @@ enum nl80211_txq_attr {
 	NL80211_TXQ_ATTR_MAX = __NL80211_TXQ_ATTR_AFTER_LAST - 1
 };
 
-enum nl80211_ac {
-	NL80211_AC_VO,
-	NL80211_AC_VI,
-	NL80211_AC_BE,
-	NL80211_AC_BK,
-	NL80211_NUM_ACS
+enum nl80211_txq_q {
+	NL80211_TXQ_Q_VO,
+	NL80211_TXQ_Q_VI,
+	NL80211_TXQ_Q_BE,
+	NL80211_TXQ_Q_BK
 };
-
-/* backward compat */
-#define NL80211_TXQ_ATTR_QUEUE	NL80211_TXQ_ATTR_AC
-#define NL80211_TXQ_Q_VO	NL80211_AC_VO
-#define NL80211_TXQ_Q_VI	NL80211_AC_VI
-#define NL80211_TXQ_Q_BE	NL80211_AC_BE
-#define NL80211_TXQ_Q_BK	NL80211_AC_BK
 
 enum nl80211_channel_type {
 	NL80211_CHAN_NO_HT,
@@ -2466,15 +2484,12 @@ enum nl80211_key_attributes {
  *	in an array of rates as defined in IEEE 802.11 7.3.2.2 (u8 values with
  *	1 = 500 kbps) but without the IE length restriction (at most
  *	%NL80211_MAX_SUPP_RATES in a single array).
- * @NL80211_TXRATE_MCS: HT (MCS) rates allowed for TX rate selection
- *	in an array of MCS numbers.
  * @__NL80211_TXRATE_AFTER_LAST: internal
  * @NL80211_TXRATE_MAX: highest TX rate attribute
  */
 enum nl80211_tx_rate_attributes {
 	__NL80211_TXRATE_INVALID,
 	NL80211_TXRATE_LEGACY,
-	NL80211_TXRATE_MCS,
 
 	/* keep last */
 	__NL80211_TXRATE_AFTER_LAST,
@@ -2533,6 +2548,7 @@ enum nl80211_attr_cqm {
 enum nl80211_cqm_rssi_threshold_event {
 	NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
 	NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
+	NL80211_CQM_RSSI_BEACON_LOSS,
 };
 
 
@@ -2860,13 +2876,16 @@ enum nl80211_ap_sme_features {
  *	TX status to the socket error queue when requested with the
  *	socket option.
  * @NL80211_FEATURE_HT_IBSS: This driver supports IBSS with HT datarates.
+ * @NL80211_FEATURE_SCHED_SCAN_INTERVALS: This driver supports using
+ * short interval for sched scan and then switching to a longer interval
  * @NL80211_FEATURE_INACTIVITY_TIMER: This driver takes care of freeing up
  *	the connected inactive stations in AP mode.
  */
 enum nl80211_feature_flags {
-	NL80211_FEATURE_SK_TX_STATUS	= 1 << 0,
-	NL80211_FEATURE_HT_IBSS		= 1 << 1,
-	NL80211_FEATURE_INACTIVITY_TIMER = 1 << 2,
+	NL80211_FEATURE_SK_TX_STATUS	      = 1 << 0,
+	NL80211_FEATURE_HT_IBSS		      = 1 << 1,
+	NL80211_FEATURE_SCHED_SCAN_INTERVALS  = 1 << 2,
+	NL80211_FEATURE_INACTIVITY_TIMER      = 1 << 3,
 };
 
 /**
@@ -2888,6 +2907,23 @@ enum nl80211_probe_resp_offload_support_attr {
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_WPS2 =	1<<1,
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_P2P =	1<<2,
 	NL80211_PROBE_RESP_OFFLOAD_SUPPORT_80211U =	1<<3,
+};
+
+/**
+ * enum nl80211_device_capabilities - device capabilities flags.
+ * @NL80211_DEV_CAPA_SUPPORTS_CANCEL_SCAN: device supports cancel scan command.
+ * @NL80211_DEV_CAPA_SUPPORTS_IM_SCAN_EVENT: device supports intermediate scan
+ * events.
+ */
+enum nl80211_device_capabilities {
+	NL80211_DEV_CAPA_SUPPORTS_CANCEL_SCAN	= (1<<0),
+	NL80211_DEV_CAPA_SUPPORTS_IM_SCAN_EVENT	= (1<<1),
+
+	/* add new flags above here */
+
+	/* keep last */
+	NUM_NL80211_DEV_CAPA,
+	MAX_NL80211_DEV_CAPA = NUM_NL80211_DEV_CAPA - 1
 };
 
 #endif /* __LINUX_NL80211_H */
