@@ -203,6 +203,13 @@ static int wpa_supplicant_ctrl_iface_set(struct wpa_supplicant *wpa_s,
 			ret = pno_start(wpa_s);
 		else
 			ret = pno_stop(wpa_s);
+	} else if (os_strcasecmp(cmd, "roaming_disabled") == 0) {
+		int disabled = atoi(value);
+		wpa_printf(MSG_DEBUG, "roaming_disabled=%d", disabled);
+		if (disabled)
+			wpa_supplicant_disable_roaming(wpa_s);
+		else
+			wpa_supplicant_enable_roaming(wpa_s);
 	} else {
 		value[-1] = '=';
 		ret = wpa_config_process_global(wpa_s->conf, cmd, -1);
