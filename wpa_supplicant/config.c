@@ -2928,9 +2928,10 @@ static const struct global_parse_data global_fields[] = {
 	{ FUNC(hessid), 0 },
 	{ INT_RANGE(access_network_type, 0, 15), 0 },
 	{ INT_RANGE(pbc_in_m1, 0, 1), 0 },
-	{ INT_RANGE(sched_scan_num_short_intervals, 0, 14), 0 },
-	{ INT_RANGE(sched_scan_short_interval, 1, 3600), 0 },
-	{ INT_RANGE(sched_scan_long_interval, 1, 3600), 0 },
+	{ INT_RANGE(sched_scan_num_short_intervals, 0,
+		    MAX_NUM_SCHED_SCAN_SHORT_INTERVALS), 0 },
+	{ INT_RANGE(sched_scan_short_interval, 1, MAX_SCHED_SCAN_INTERVAL), 0 },
+	{ INT_RANGE(sched_scan_long_interval, 1, MAX_SCHED_SCAN_INTERVAL), 0 },
 };
 
 #undef FUNC
