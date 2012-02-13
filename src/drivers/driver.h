@@ -2870,6 +2870,7 @@ enum wpa_event_type {
 	 */
 	EVENT_ROAMING_DISABLED,
 
+	EVENT_START_ROAMING,
 	/**
 	 * EVENT_INTERFACE_ENABLED - Notify that interface was enabled
 	 *
