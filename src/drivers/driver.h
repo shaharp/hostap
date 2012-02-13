@@ -3046,7 +3046,9 @@ enum wpa_event_type {
 	 *
 	 * This event can be used to request a WNM operation to be performed.
 	 */
-	EVENT_WNM
+	EVENT_WNM,
+
+	EVENT_START_ROAMING,
 };
 
 
