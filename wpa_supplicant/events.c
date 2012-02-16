@@ -722,6 +722,8 @@ void wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 #ifdef ANDROID_BRCM_P2P_PATCH
 			return -1;
 #else
+			wpa_s->roaming_in_progress = 0;
+			wpa_s->ignore_deauth_event = 0;
 			return;
 #endif
 		}
@@ -733,6 +735,8 @@ void wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 #ifdef ANDROID_BRCM_P2P_PATCH
 		return -1;
 #else
+		wpa_s->roaming_in_progress = 0;
+		wpa_s->ignore_deauth_event = 0;
 		return;
 #endif /* ANDROID_BRCM_P2P_PATCH */
 	}
@@ -758,6 +762,8 @@ void wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 #ifdef ANDROID_BRCM_P2P_PATCH
 			return 0;
 #else
+			wpa_s->roaming_in_progress = 0;
+			wpa_s->ignore_deauth_event = 0;
 			return;
 #endif
 		}
@@ -771,6 +777,8 @@ void wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Already associated with the "
 			"selected AP");
+		wpa_s->roaming_in_progress = 0;
+		wpa_s->ignore_deauth_event = 0;
 	}
 #ifdef ANDROID_BRCM_P2P_PATCH
 	return 0;
@@ -903,6 +911,9 @@ static int wpa_supplicant_need_to_roam(struct wpa_supplicant *wpa_s,
 		return 0;
 	}
 
+	wpa_s->roaming_in_progress = 1;
+	os_memcpy(wpa_s->prev_bssid, wpa_s->bssid, ETH_ALEN);
+	wpa_s->prev_ssid = wpa_s->current_ssid;
 	return 1;
 #else
 	return 0;
@@ -1008,6 +1019,7 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 		wpa_supplicant_rsn_preauth_scan_results(wpa_s);
 		if (skip)
 			return 0;
+
 #ifdef ANDROID_BRCM_P2P_PATCH
 		if (wpa_supplicant_connect(wpa_s, selected, ssid) < 0) {
 			wpa_dbg(wpa_s, MSG_DEBUG, "Connect Failed");
@@ -1904,7 +1916,15 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			break;
 		}
 #endif /* CONFIG_AP */
-		wpa_supplicant_event_disassoc(wpa_s, reason_code);
+		if (data->deauth_info.reason_code
+		    == WLAN_REASON_PREV_AUTH_NOT_VALID &&
+		    wpa_s->ignore_deauth_event) {
+			wpa_dbg(wpa_s, MSG_DEBUG, "Ignore deauth event"
+				" with reason=2");
+			wpa_s->ignore_deauth_event = 0;
+		} else {
+			wpa_supplicant_event_disassoc(wpa_s, reason_code);
+		}
 
 #if defined(ANDROID_BRCM_P2P_PATCH) && defined(CONFIG_P2P)
 		wpas_p2p_group_remove_notif(wpa_s, reason_code);
