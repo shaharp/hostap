@@ -492,12 +492,27 @@ void sme_event_assoc_reject(struct wpa_supplicant *wpa_s,
 }
 
 
+void sme_event_auth_assoc_timed_out(struct wpa_supplicant *wpa_s)
+{
+	wpas_connection_failed(wpa_s, wpa_s->pending_bssid);
+
+	if (wpa_s->roaming_in_progress) {
+		wpa_dbg(wpa_s, MSG_DEBUG, "SME: Roaming failed. "
+			"Fallback to original BSS");
+		wpa_s->roaming_in_progress = 0;
+		wpa_s->ignore_deauth_event = 1;
+		wpa_supplicant_connect(wpa_s, wpa_s->prev_bss,
+				       wpa_s->prev_ssid);
+	} else {
+		wpa_supplicant_mark_disassoc(wpa_s);
+	}
+}
+
 void sme_event_auth_timed_out(struct wpa_supplicant *wpa_s,
 			      union wpa_event_data *data)
 {
 	wpa_dbg(wpa_s, MSG_DEBUG, "SME: Authentication timed out");
-	wpas_connection_failed(wpa_s, wpa_s->pending_bssid);
-	wpa_supplicant_mark_disassoc(wpa_s);
+	sme_event_auth_assoc_timed_out(wpa_s);
 }
 
 
@@ -505,9 +520,9 @@ void sme_event_assoc_timed_out(struct wpa_supplicant *wpa_s,
 			       union wpa_event_data *data)
 {
 	wpa_dbg(wpa_s, MSG_DEBUG, "SME: Association timed out");
-	wpas_connection_failed(wpa_s, wpa_s->pending_bssid);
-	wpa_supplicant_mark_disassoc(wpa_s);
+	sme_event_auth_assoc_timed_out(wpa_s);
 }
+
 
 
 void sme_event_disassoc(struct wpa_supplicant *wpa_s,

@@ -354,6 +354,12 @@ struct wpa_supplicant {
 	u8 bssid[ETH_ALEN];
 	u8 pending_bssid[ETH_ALEN]; /* If wpa_state == WPA_ASSOCIATING, this
 				     * field contains the targer BSSID. */
+
+	int roaming_in_progress;
+	int ignore_deauth_event;
+	struct wpa_bss *prev_bss;    /* BSS being roamed from */
+	struct wpa_ssid *prev_ssid;  /* BSS being roamed from */
+
 	int reassociate; /* reassociation requested */
 	int roaming; /* roaming requested */
 	int disconnected; /* all connections disabled; i.e., do no reassociate
