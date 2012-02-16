@@ -3206,7 +3206,6 @@ wpa_driver_ndis_get_interfaces(void *global_priv)
 	return iface;
 }
 
-
 static const char *ndis_drv_name = "ndis";
 static const char *ndis_drv_desc = "Windows NDIS driver";
 
