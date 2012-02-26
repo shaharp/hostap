@@ -1063,10 +1063,12 @@ void p2p_process_go_neg_conf(struct p2p_data *p2p, const u8 *sa,
 
 	if (msg.dialog_token != dev->dialog_token) {
 		wpa_msg(p2p->cfg->msg_ctx, MSG_DEBUG,
-			"P2P: Unexpected Dialog Token %u (expected %u)",
+			"P2P: Skip Unexpected Dialog Token %u (expected %u)",
 			msg.dialog_token, dev->dialog_token);
+#if 0
 		p2p_parse_free(&msg);
 		return;
+#endif
 	}
 
 	if (!msg.status) {
