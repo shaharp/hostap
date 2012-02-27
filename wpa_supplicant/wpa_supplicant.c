@@ -414,7 +414,7 @@ static void wpa_supplicant_cleanup(struct wpa_supplicant *wpa_s)
 	ieee80211_sta_deinit(wpa_s);
 
 	wpas_wps_deinit(wpa_s);
-
+	wpa_dbg(wpa_s, MSG_DEBUG, "%s: freeing pending eapol", __func__);
 	wpabuf_free(wpa_s->pending_eapol_rx);
 	wpa_s->pending_eapol_rx = NULL;
 
@@ -1948,6 +1948,8 @@ void wpa_supplicant_rx_eapol(void *ctx, const u8 *src_addr,
 			os_memcpy(wpa_s->pending_eapol_rx_src, src_addr,
 				  ETH_ALEN);
 		}
+		wpa_dbg(wpa_s, MSG_DEBUG, "%s: pending eapol was set: %d",
+			__func__, !!wpa_s->pending_eapol_rx);
 		return;
 	}
 
