@@ -1439,7 +1439,7 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 			"src: " MACSTR " bssid: " MACSTR "sec: %ld usec: %ld",
 			__func__, MAC2STR(wpa_s->pending_eapol_rx_src),
 			MAC2STR(bssid), age.sec, age.usec);
-		if (age.sec == 0 && age.usec < 100000 &&
+		if (age.sec == 0 && age.usec < 500000 &&
 		    os_memcmp(wpa_s->pending_eapol_rx_src, bssid, ETH_ALEN) ==
 		    0) {
 			wpa_dbg(wpa_s, MSG_DEBUG, "Process pending EAPOL "
