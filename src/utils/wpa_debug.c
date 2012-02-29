@@ -38,7 +38,7 @@ int wpa_debug_timestamp = 0;
 
 void android_printf(int level, char *format, ...)
 {
-	if (level >= wpa_debug_level) {
+	if (level >= MSG_DEBUG) {
 		va_list ap;
 		if (level == MSG_ERROR)
 			level = ANDROID_LOG_ERROR;
