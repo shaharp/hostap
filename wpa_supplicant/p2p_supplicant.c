@@ -2971,6 +2971,11 @@ int wpas_p2p_connect(struct wpa_supplicant *wpa_s, const u8 *peer_addr,
 	} else
 		wpa_s->p2p_pin[0] = '\0';
 
+	if (join && p2p_is_go(wpa_s->global->p2p, peer_addr)) {
+		wpa_printf(MSG_DEBUG, "AAA - skipping joing param...");
+		join = 0;
+	}
+
 	if (join) {
 		u8 iface_addr[ETH_ALEN], dev_addr[ETH_ALEN];
 		if (auth) {

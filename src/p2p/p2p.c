@@ -3657,3 +3657,15 @@ p2p_get_peer_found(struct p2p_data *p2p, const u8 *addr, int next)
 
 	return &dev->info;
 }
+
+int p2p_is_go(struct p2p_data *p2p, const u8 *addr)
+{
+	struct p2p_device *dev = p2p_get_device(p2p, addr);
+	if (!dev)
+		return 0;
+
+	wpa_printf(MSG_DEBUG, "AAA: go_state: %d go_capab: %d",
+		   dev->go_state, dev->info.group_capab);
+
+	return dev->go_state == REMOTE_GO;
+}

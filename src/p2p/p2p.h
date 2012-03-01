@@ -1529,5 +1529,5 @@ int p2p_set_oper_channel(struct p2p_data *p2p, u8 op_reg_class, u8 op_channel,
 			 int cfg_op_channel);
 
 int p2p_prepare_channel(struct p2p_data *p2p, unsigned int force_freq);
-
+int p2p_is_go(struct p2p_data *p2p, const u8 *addr);
 #endif /* P2P_H */
