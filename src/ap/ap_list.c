@@ -326,7 +326,7 @@ void ap_list_process_beacon(struct hostapd_iface *iface,
 #endif /* CONFIG_IEEE80211N */
 
 	if (set_beacon)
-		ieee802_11_set_beacons(iface);
+		ieee802_11_update_beacons(iface);
 }
 
 
@@ -381,7 +381,7 @@ static void ap_list_timer(void *eloop_ctx, void *timeout_ctx)
 	}
 
 	if (set_beacon)
-		ieee802_11_set_beacons(iface);
+		ieee802_11_update_beacons(iface);
 }
 
 
