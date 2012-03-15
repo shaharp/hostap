@@ -1665,7 +1665,7 @@ static void wpa_supplicant_event_disassoc(struct wpa_supplicant *wpa_s,
 		return;
 	}
 
-	if (os_memcmp(wpa_s->bssid, addr, ETH_ALEN)) {
+	if (addr && wpa_s->bssid && os_memcmp(wpa_s->bssid, addr, ETH_ALEN)) {
 		/* This may occur during roaming */
 		wpa_dbg(wpa_s, MSG_DEBUG, "Ignore disconnect from"
 			" a BSS which is not the current one");
