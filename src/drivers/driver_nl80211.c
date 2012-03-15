@@ -8974,7 +8974,7 @@ static int nl80211_toggle_dropbcast(int enable)
 	snprintf(filename, sizeof(filename) - 1,
 		 "/sys/bus/platform/devices/wl12xx/drop_bcast");
 	f = fopen(filename, "w");
-	if (f < 0) {
+	if (!f) {
 		wpa_printf(MSG_DEBUG, "Could not open file %s: %s",
 			   filename, strerror(errno));
 		return -1;
