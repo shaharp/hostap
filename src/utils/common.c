@@ -381,3 +381,16 @@ void * __hide_aliasing_typecast(void *foo)
 {
 	return foo;
 }
+
+int frequency_to_channel(int freq)
+{
+	/* see 802.11 17.3.8.3.2 and Annex J */
+	if (freq == 2484)
+		return 14;
+	else if (freq < 2484)
+		return (freq - 2407) / 5;
+	else if (freq >= 4910 && freq <= 4980)
+		return (freq - 4000) / 5;
+	else
+		return (freq - 5000) / 5;
+}

@@ -1017,6 +1017,24 @@ struct wpa_signal_info {
 	int current_txrate;
 };
 
+#ifdef TI_CCX
+struct tspec_params {
+	u8 tid;
+	u8 power_save_behavior;
+	u16 nominal_msdu_size;
+	u16 max_msdu_size;
+	u32 max_service_interval;
+	u32 min_service_interval;
+	u32 inactivity_interval;
+	u32 suspension_interval;
+	u32 min_phy_rate;
+	u32 surplus_bw_allowance;
+	u32 mean_data_rate;
+	u8* extra_ies;
+	size_t extra_ies_len;
+};
+#endif
+
 /**
  * struct wpa_driver_ops - Driver interface API definition
  *
@@ -2649,6 +2667,8 @@ struct wpa_driver_ops {
 	 * Calls Driver's
 	 */
 	int (*ccx_rogueap_send_list)(void *pPriv);
+
+	int (*set_tspec)(void *priv, struct tspec_params *tspec_param);
 #endif /* TI_CCX */
 };
 
@@ -3097,7 +3117,30 @@ enum wpa_event_type {
 	/**
 	 * EVENT_EAPOL_TX_STATUS - notify of EAPOL TX status
 	 */
-	EVENT_EAPOL_TX_STATUS
+	EVENT_EAPOL_TX_STATUS,
+
+#ifdef TI_CCX
+    /**
+     * EVENT_DELTS - Indicate delts event
+     *
+     * This event is used when delts is received from the driver
+     */
+     EVENT_CCX_DELTS,
+
+     /**
+      * EVENT_ADDTS - Indicate addts event
+      *
+      * This event should be received after the driver send an addts request
+      * and receives and addts response from the AP
+      */
+     EVENT_CCX_ADDTS,
+
+     /**
+        * EVENT_CCX_IE - Indicates a CCX ie was received
+        *         */
+     EVENT_CCX_IE,
+#endif /* TI_CCX */
+
 };
 
 
@@ -3695,6 +3738,22 @@ union wpa_event_data {
 
 #ifdef TI_CCX
 	cckm_start_t cckm_start;
+
+	struct ccx_delts {
+		u8 tid;
+		u8 reason_code;
+	} ccx_delts;
+
+	struct ccx_addts {
+		u8 status;
+		u8* tspec_ie;
+		u8 tspec_ie_len;
+	} ccx_addts;
+
+	struct ccx_ie {
+		u8* ie;
+		u8 ie_len;
+	} ccx_ie;
 #endif /* TI_CCX */
 };
 

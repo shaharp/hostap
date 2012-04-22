@@ -571,6 +571,11 @@
  *      disabled (marked by the presence of @NL80211_ATTR_ROAMING_DISABLED flag)
  *      userspace should disable background scans and roaming attempts.
  *
+ * @NL80211_CMD_TSPEC: send a addts request to an AP, to enable sending traffic
+ *  on a wmm queue which has the admission control mandatory bit set.
+ *  This command contains %NL80211_ATTR_TSPEC which is a nested attribute
+ *  containing all the information about the ts.
+ *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
  */
@@ -720,6 +725,7 @@ enum nl80211_commands {
 
 	NL80211_CMD_ROAMING_SUPPORT,
 
+	NL80211_CMD_TSPEC,
 	/* add new commands above here */
 
 	/* used to define NL80211_CMD_MAX below */
@@ -1544,6 +1550,11 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_ROAMING_DISABLED,
 
+	NL80211_ATTR_TSPEC,
+	NL80211_ATTR_TSPEC_ACTION_CODE,
+	NL80211_ATTR_TSPEC_STATUS_CODE,
+
+	NL80211_ATTR_TID,
 	/* add attributes here, update the policy in nl80211.c */
 
 	__NL80211_ATTR_AFTER_LAST,
@@ -2362,6 +2373,75 @@ enum nl80211_channel_type {
 	NL80211_CHAN_HT20,
 	NL80211_CHAN_HT40MINUS,
 	NL80211_CHAN_HT40PLUS
+};
+
+/**
+ * enum nl80211_ATTR_TSPEC - TSPEC configuration parameter attributes
+ * @__NL80211_TSPCE_ATTR_INVALID: Attribute number 0 is reserved
+ * @NL80211_ATTR_TSPEC_TID: traffic stream for which a request is being made
+ * @NL80211_ATTR_TSPEC_DIRECTION: 0 - uplink, 1 - downlink, 3 - biderectional
+ * @NL80211_ATTR_TSPEC_PSB: 0 - legacy, 1 u-apsd
+ * @NL80211_ATTR_TSPEC_USER_PRIO: user priority, if not defined same as tid
+ * @NL80211_ATTR_TSPEC_NOMINAL_MSDU_SIZE: nominal msdu size
+ * @NL80211_ATTR_TSPEC_MAX_MSDU_SIZE: maximum msdu size
+ * @NL80211_ATTR_TSPEC_MAX_SERVICE_INT: Maximum service interval
+ * @NL80211_ATTR_TSPEC_MIN_SERVICE_INT: Maximum service interval
+ * @NL80211_ATTR_TSPEC_INACTIVITY_INT: Inactivity interval
+ * @NL80211_ATTR_TSPEC_SUSPENSION_INT: suspension interval
+ * @NL80211_ATTR_TSPEC_START_TIME:
+ * @NL80211_ATTR_TSPEC_MIN_DATA_RATE: minimum data rate, in units of bits per
+ * second
+ * @NL80211_ATTR_TSPEC_MEAN_DATA_RATE: average data rate, in units of bits per
+ * second
+ * @NL80211_ATTR_TSPEC_PEAK_DATA_RATE:
+ * @NL80211_ATTR_TSPEC_MAX_BURST_SIZE:
+ * @NL80211_ATTR_TSPEC_DELAY_BOUND
+ * @NL80211_ATTR_TSPEC_MIN_PHY_RATE: minimum PHY rate, in units of bits per
+ * second
+ * @NL80211_ATTR_TSPEC_SURPLUS_BW_ALLOWANCE:excess allocation of time (and
+ * bandwidth) over and above the stated rates required to transport an MSDU
+ * @NL80211_ATTR_TSPEC_MEDIUM_TIME:amount of time admitted to access the
+ * medium in units of 32 microsecond periods per second.
+ * @__NL80211_TXQ_ATTR_AFTER_LAST: Internal
+ * @NL80211_TXQ_ATTR_MAX: Maximum TXQ attribute number
+ */
+enum nl80211_ATTR_TSPEC {
+	__NL80211_ATTR_TSPEC_INVALID,
+	NL80211_ATTR_TSPEC_TID,
+	NL80211_ATTR_TSPEC_DIRECTION,
+	NL80211_ATTR_TSPEC_PSB,
+	NL80211_ATTR_TSPEC_USER_PRIO,
+	NL80211_ATTR_TSPEC_NOMINAL_MSDU_SIZE,
+	NL80211_ATTR_TSPEC_MAX_MSDU_SIZE,
+	NL80211_ATTR_TSPEC_MAX_SERVICE_INT,
+	NL80211_ATTR_TSPEC_MIN_SERVICE_INT,
+	NL80211_ATTR_TSPEC_INACTIVITY_INT,
+	NL80211_ATTR_TSPEC_SUSPENSION_INT,
+	NL80211_ATTR_TSPEC_START_TIME,
+	NL80211_ATTR_TSPEC_MIN_DATA_RATE,
+	NL80211_ATTR_TSPEC_MEAN_DATA_RATE,
+	NL80211_ATTR_TSPEC_PEAK_DATA_RATE,
+	NL80211_ATTR_TSPEC_MAX_BURST_SIZE,
+	NL80211_ATTR_TSPEC_DELAY_BOUND,
+	NL80211_ATTR_TSPEC_MIN_PHY_RATE,
+	NL80211_ATTR_TSPEC_SURPLUS_BW_ALLOWANCE,
+	NL80211_ATTR_TSPEC_MEDIUM_TIME,
+
+	/* keep last */
+	__NL80211_ATTR_TSPEC_AFTER_LAST,
+	NL80211_ATTR_TSPEC_MAX = __NL80211_ATTR_TSPEC_AFTER_LAST -1
+};
+
+enum nl80211_tspec_direction {
+	NL80211_TSPEC_DIRECTION_UPLINK,
+	NL80211_TSPEC_DIRECTION_DOWNLINK,
+	NL80211_TSPEC_DIRECTION_RESERVED,
+	NL80211_TSPEC_DIRECTION_BIDIRECTIONAL
+};
+
+enum nl80211_tspec_psb {
+	NL80211_TSPEC_PSB_LEGACY,
+	NL80211_TSPEC_PSB_UAPSD
 };
 
 /**

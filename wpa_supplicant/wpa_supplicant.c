@@ -663,6 +663,15 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 		if (wpa_s->tx_power != -1) {
 			wpa_drv_set_tx_power(wpa_s, 0, wpa_s->tx_power * 100);
 		}
+		if (!is_zero_ether_addr(wpa_s->prev_bssid)) {
+			ccx_send_iapp_information(wpa_s);
+		}
+
+		wpa_s->prev_freq = wpa_s->assoc_freq;
+		os_memcpy(wpa_s->prev_bssid, wpa_s->bssid, ETH_ALEN);
+		wpa_s->ccx_prev_ssid_len = wpa_s->current_ssid->ssid_len;
+		os_memcpy(wpa_s->ccx_prev_ssid, wpa_s->current_ssid->ssid,
+				wpa_s->current_ssid->ssid_len);
 	}
 #endif /* TI_CCX */
 

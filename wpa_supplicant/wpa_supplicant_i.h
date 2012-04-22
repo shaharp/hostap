@@ -299,6 +299,12 @@ struct wpa_supplicant {
 	struct wpa_bss *current_bss;
 	int ap_ies_from_associnfo;
 	unsigned int assoc_freq;
+#ifdef TI_CCX
+	int prev_freq;
+	int ccx_prev_ssid_len;
+	u8 ccx_prev_ssid[MAX_SSID_LEN];
+	struct os_time new_connection_ts;
+#endif /* TI_CCX */
 
 	/* Selected configuration (based on Beacon/ProbeResp WPA IE) */
 	int pairwise_cipher;
@@ -591,6 +597,8 @@ struct wpa_supplicant {
 
 	int user_tx_power;
 	int tx_power;
+	u8 *tspec_ie[8]; /* hold a tspec for each tid */
+
 #endif /* TI_CCX */
 };
 

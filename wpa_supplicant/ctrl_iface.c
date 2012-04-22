@@ -3832,6 +3832,42 @@ static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 	return ret;
 }
 
+#ifdef TI_CCX
+static int wpa_supplicant_ctrl_iface_tspec_add(struct wpa_supplicant *wpa_s,
+		 char *buf)
+{
+	struct tspec_params tspec_params;
+	os_memset(&tspec_params, 0, sizeof(tspec_params));
+
+	if (os_strncmp(buf, "video", 5) == 0) {
+		tspec_params.tid = 4;
+		tspec_params.power_save_behavior = 0;
+		tspec_params.nominal_msdu_size = 150;
+		tspec_params.max_msdu_size = 1500;
+		tspec_params.suspension_interval = 0xFFFFFFFF;
+		tspec_params.mean_data_rate = 160;
+		tspec_params.min_phy_rate = 6;
+		tspec_params.surplus_bw_allowance = 0x3000;
+
+	} else if (os_strncmp(buf, "voice", 5) == 0) {
+		tspec_params.tid = 6;
+		tspec_params.power_save_behavior = 1;
+		tspec_params.nominal_msdu_size = 208 | 0x8000;
+		tspec_params.max_msdu_size = 208;
+		tspec_params.max_service_interval = 0x00004E20;
+		tspec_params.min_service_interval = 0x00004E20;
+		tspec_params.inactivity_interval = 0x00989680;
+		tspec_params.suspension_interval = 0xFFFFFFFF;
+		tspec_params.mean_data_rate = 0x00014500;
+		tspec_params.min_phy_rate = 6;
+		tspec_params.surplus_bw_allowance = 0x3000;
+	} else
+		return -1;
+
+	wpa_drv_set_tspec(wpa_s, &tspec_params);
+	return 0;
+}
+#endif
 
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
@@ -4298,6 +4334,10 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 	} else if (os_strncmp(buf, "DRIVER ", 7) == 0) {
 		reply_len = wpa_supplicant_driver_cmd(wpa_s, buf + 7, reply,
 						      reply_size);
+#ifdef TI_CCX
+	} else if (os_strncmp(buf, "TSPEC_ADD ", 10) == 0) {
+		reply_len = wpa_supplicant_ctrl_iface_tspec_add(wpa_s, buf + 10);
+#endif
 	} else {
 		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
 		reply_len = 16;

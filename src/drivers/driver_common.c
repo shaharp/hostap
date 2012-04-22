@@ -81,6 +81,11 @@ const char * event_to_string(enum wpa_event_type event)
 	E2S(ROAMING_ENABLED);
 	E2S(ROAMING_DISABLED);
 	E2S(START_ROAMING);
+#ifdef TI_CCX
+	E2S(CCX_DELTS);
+	E2S(CCX_ADDTS);
+	E2S(CCX_IE);
+#endif /*TI_CCX*/
 	}
 
 	return "UNKNOWN";

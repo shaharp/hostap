@@ -900,9 +900,15 @@ int wpa_supplicant_connect(struct wpa_supplicant *wpa_s,
 #ifdef TI_CCX
 		if (!is_zero_ether_addr(wpa_s->bssid)) {
 			wpa_s->ccx_roaming = 1;
-		} else
+			wpa_s->prev_freq = wpa_s->assoc_freq;
+			os_memcpy(wpa_s->prev_bssid, wpa_s->bssid, ETH_ALEN);
+			wpa_s->ccx_prev_ssid_len = wpa_s->current_ssid->ssid_len;
+			os_memcpy(wpa_s->ccx_prev_ssid, wpa_s->current_ssid->ssid, wpa_s->current_ssid->ssid_len);
+			os_get_time(&wpa_s->new_connection_ts);
+		}
+		else
 			wpa_s->ccx_roaming = 0;
-#endif
+#endif /* TI_CCX */
 		wpa_supplicant_associate(wpa_s, selected, ssid);
 	} else {
 		wpa_dbg(wpa_s, MSG_DEBUG, "Already associated with the "
@@ -2812,6 +2818,19 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 		wpas_wps_start_pbc(wpa_s, NULL, 0);
 #endif /* CONFIG_WPS */
 		break;
+#ifdef TI_CCX
+   case EVENT_CCX_DELTS:
+	ccx_event_delts(wpa_s, data->ccx_delts.tid,
+			data->ccx_delts.reason_code);
+	break;
+    case EVENT_CCX_ADDTS:
+		ccx_event_addts(wpa_s, data->ccx_addts.status,
+				data->ccx_addts.tspec_ie, data->ccx_addts.tspec_ie_len);
+		break;
+    case EVENT_CCX_IE:
+	ccx_event_ie(wpa_s, data->ccx_ie.ie, data->ccx_ie.ie_len);
+	break;
+#endif /* TI_CCX */
 	default:
 		wpa_msg(wpa_s, MSG_INFO, "Unknown event %d", event);
 		break;

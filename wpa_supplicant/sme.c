@@ -52,6 +52,7 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 #ifdef TI_CCX
 	u8* ccx_ies = NULL;
 	size_t ccx_ies_len = 0;
+	int tid;
 #endif /* TI_CCX */
 	int i, bssid_changed;
 
@@ -277,6 +278,33 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 			wpa_printf(MSG_ERROR, "CCX: tx_power = %d\n", tx_power);
 			if (ret || ((mbm > 0) && (tx_power < (mbm/100)))) {
 				wpa_s->tx_power = tx_power;
+			}
+		}
+	}
+#define TSPEC_IE_LEN (63)
+
+	for (tid = 0; tid < 8; tid++) {
+		if (wpa_s->tspec_ie[tid] != NULL) {
+			if (wpa_s->sme.assoc_req_ie_len + TSPEC_IE_LEN + CCX_TSRS_IE_LEN + 2
+					< sizeof(wpa_s->sme.assoc_req_ie)) {
+				u8 *pos = wpa_s->sme.assoc_req_ie +
+						wpa_s->sme.assoc_req_ie_len;
+
+				os_memcpy(pos, wpa_s->tspec_ie[tid], TSPEC_IE_LEN);
+				pos += TSPEC_IE_LEN;
+				wpa_s->sme.assoc_req_ie_len += TSPEC_IE_LEN;
+
+				/*TSRT IE */
+				*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+				*pos++= CCX_TSRS_IE_LEN;
+				*pos++ = 0x00;
+				*pos++ = 0x40;
+				*pos++ = 0x96;
+				*pos++ = 8;
+				*pos++ = tid;
+				*pos++ = 12;
+
+				wpa_s->sme.assoc_req_ie_len += CCX_TSRS_IE_LEN + 2;
 			}
 		}
 	}

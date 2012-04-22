@@ -348,6 +348,12 @@ void ccx_deinit_ies(struct wpa_sm* pstSm);
 void ccx_print_buf(int dwLevel, const char *szTitle, const BYTE *pbBuff,
 		DWORD dwBuffLen);
 
+void ccx_event_delts(struct wpa_supplicant *wpa_s,
+		u8 tid, u8 reason_code);
+
+void ccx_event_addts(struct wpa_supplicant *wpa_s, u8 status,
+		u8* ie, u8 ie_len);
+
 void ccx_event_ie(struct wpa_supplicant *wpa_s,u8* ie, u8 ie_len);
 
 #endif /* _CCX_H_ */

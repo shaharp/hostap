@@ -1903,6 +1903,64 @@ static int nl80211_get_noise_for_scan_results(
 	return -ENOBUFS;
 }
 
+#ifdef TI_CCX
+static int nl80211_set_tspec(void *priv, struct tspec_params *tspec_params)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+	int ret = -ENOBUFS;
+	struct nl_msg *msg;
+	struct nlattr *tspec;
+
+	msg = nlmsg_alloc();
+	if (!msg) {
+		return ret = -ENOMEM;
+		goto nla_put_failure;
+	}
+
+	genlmsg_put(msg, 0, 0, drv->global->nl80211_id, 0,
+			    0, NL80211_CMD_TSPEC, 0);
+
+	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, drv->ifindex);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_ACTION_CODE, 0);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_STATUS_CODE, 0);
+
+	tspec = nla_nest_start(msg, NL80211_ATTR_TSPEC);
+	if (!tspec) {
+		return ret = -ENOBUFS;
+		goto nla_put_failure;
+	}
+
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_TID, tspec_params->tid);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_NOMINAL_MSDU_SIZE, tspec_params->nominal_msdu_size);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_MAX_MSDU_SIZE, tspec_params->max_msdu_size);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_MAX_SERVICE_INT, tspec_params->max_service_interval);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_MIN_SERVICE_INT, tspec_params->min_service_interval);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_INACTIVITY_INT, tspec_params->inactivity_interval);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_SUSPENSION_INT, tspec_params->suspension_interval);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_MIN_PHY_RATE, tspec_params->min_phy_rate);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_DIRECTION, 3);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_PSB, tspec_params->power_save_behavior);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_SURPLUS_BW_ALLOWANCE, tspec_params->surplus_bw_allowance);
+	NLA_PUT_U32(msg, NL80211_ATTR_TSPEC_MEAN_DATA_RATE, tspec_params->mean_data_rate);
+	nla_nest_end(msg, tspec);
+
+	if (tspec_params->extra_ies) {
+		wpa_hexdump_ascii(MSG_MSGDUMP, "nl80211: tspec extra IEs",
+				  tspec_params->extra_ies, tspec_params->extra_ies_len);
+		NLA_PUT(msg, NL80211_ATTR_IE, tspec_params->extra_ies_len,
+			tspec_params->extra_ies);
+	}
+	ret = send_and_recv_msgs(drv, msg, NULL, NULL);
+	if (!ret)
+		return 0;
+nla_put_failure:
+	wpa_printf(MSG_ERROR, "nl80211: Failed to set tspec, err %d (%s)",
+			ret, strerror(-ret));
+	return ret;
+}
+
+#endif
 
 static void nl80211_cqm_event(struct wpa_driver_nl80211_data *drv,
 			      struct nlattr *tb[])
@@ -2051,6 +2109,63 @@ static void nl80211_del_station_event(struct wpa_driver_nl80211_data *drv,
 	wpa_supplicant_event(drv->ctx, EVENT_IBSS_PEER_LOST, &data);
 }
 
+static void nl80211_tspec_event(struct wpa_driver_nl80211_data *drv,
+		struct nlattr **tb)
+{
+	u8* buf;
+	u8* ies;
+	u8 len, left;
+	u8 action_code;
+#ifdef TI_CCX
+	u8 ccx_oui[3] = {0x00, 0x40, 0x96};
+	union wpa_event_data data;
+#endif
+	struct ieee80211_mgmt *mgmt;
+	if (tb[NL80211_ATTR_FRAME] == NULL)
+		return;
+
+	buf = nla_data(tb[NL80211_ATTR_FRAME]);
+	len = nla_len(tb[NL80211_ATTR_FRAME]);
+	left = len;
+	mgmt = (struct ieee80211_mgmt*)buf;
+	action_code = mgmt->u.action.u.wmm_action.action_code;
+#ifdef TI_CCX
+	if (action_code == WMM_ACTION_CODE_DELTS) {
+		struct ieee80211_tspec_ie *tspec = (struct ieee80211_tspec_ie*)
+				mgmt->u.action.u.wmm_action.variable;
+		data.ccx_delts.tid = tspec->tsinfo >> IEEE80211_WMM_IE_TSPEC_TID_SHIFT &
+		IEEE80211_WMM_IE_TSPEC_TID_MASK;
+		data.ccx_delts.reason_code = mgmt->u.action.u.wmm_action.status_code;
+		wpa_supplicant_event(drv->ctx, EVENT_CCX_DELTS, &data);
+		wpa_printf(MSG_DEBUG, "nl80211: deleting tspec tid %d\n",
+				data.ccx_delts.tid);
+	}
+	if (action_code == WMM_ACTION_CODE_ADDTS_RESP) {
+		struct ieee80211_tspec_ie *tspec = (struct ieee80211_tspec_ie*)
+						mgmt->u.action.u.wmm_action.variable;
+			data.ccx_addts.status = mgmt->u.action.u.wmm_action.status_code;
+			data.ccx_addts.tspec_ie = (u8*)tspec;
+			data.ccx_addts.tspec_ie_len = tspec->len + 2;
+			wpa_supplicant_event(drv->ctx, EVENT_CCX_ADDTS, &data);
+	}
+#endif
+	ies = (u8*)&mgmt->u.action.u.wmm_action.variable;
+	left -= (ies - buf);
+	while (left) {
+#ifdef TI_CCX
+		if (memcmp(ies+2, ccx_oui, 3) == 0) {
+			wpa_printf(MSG_DEBUG, "nl80211: found CCX IE type %d\n", ies[5]);
+			os_memset(&data, 0, sizeof(data));
+			data.ccx_ie.ie = ies;
+			data.ccx_ie.ie_len = ies[1] + 2;
+			wpa_supplicant_event(drv->ctx, EVENT_CCX_IE, &data);
+		}
+#endif
+		left -= (ies[1]+2);
+		ies += (ies[1]+2);
+	}
+	return;
+}
 
 static void nl80211_rekey_offload_event(struct wpa_driver_nl80211_data *drv,
 					struct nlattr **tb)
@@ -2274,6 +2389,10 @@ static void do_process_drv_event(struct wpa_driver_nl80211_data *drv,
 		break;
 	case NL80211_CMD_PROBE_CLIENT:
 		nl80211_client_probe_event(drv, tb);
+		break;
+	case NL80211_CMD_TSPEC:
+		wpa_printf(MSG_DEBUG, "nl80211: received TSPEC event");
+		nl80211_tspec_event(drv, tb);
 		break;
 	default:
 		wpa_printf(MSG_DEBUG, "nl80211: Ignored unknown event "
@@ -9866,4 +9985,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 #ifdef ANDROID
 	.driver_cmd = wpa_driver_nl80211_driver_cmd,
 #endif /* ANDROID */
+#ifdef TI_CCX
+	.set_tspec = nl80211_set_tspec,
+#endif
 };

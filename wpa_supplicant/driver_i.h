@@ -712,5 +712,13 @@ static inline void wpa_drv_update_cckm_request(struct wpa_supplicant *wpa_s,
 		wpa_printf (MSG_ERROR,"CCKM: Driver don't support update_cckm_request\n");
 	}
 }
+
+static inline int wpa_drv_set_tspec(struct wpa_supplicant *wpa_s,
+		struct tspec_params *tspec_params) {
+	if (!wpa_s->driver->set_tspec)
+		return -1;
+
+	return wpa_s->driver->set_tspec(wpa_s->drv_priv, tspec_params);
+}
 #endif /* TI_CCX */
 #endif /* DRIVER_I_H */

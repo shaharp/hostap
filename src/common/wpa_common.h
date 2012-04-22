@@ -146,6 +146,7 @@
 #define WPA_KEY_INFO_ENCR_KEY_DATA BIT(12) /* IEEE 802.11i/RSN only */
 #define WPA_KEY_INFO_SMK_MESSAGE BIT(13)
 
+#define TSPEC_IE_LEN (63)
 
 struct wpa_eapol_key {
 	u8 type;

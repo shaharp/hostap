@@ -552,6 +552,33 @@ struct ieee80211_ht_operation {
 	u8 basic_set[16];
 } STRUCT_PACKED;
 
+struct ieee80211_tspec_ie {
+	u8 element_id;
+	u8 len;
+	u8 oui[3];
+	u8 oui_type;
+	u8 oui_subtype;
+	u8 version;
+	le16 tsinfo;
+	u8 tsinfo_resvd;
+	le16 nominal_msdu;
+	le16 max_msdu;
+	le32 min_service_int;
+	le32 max_service_int;
+	le32 inactivity_int;
+	le32 suspension_int;
+	le32 service_start_time;
+	le32 min_data_rate;
+	le32 mean_data_rate;
+	le32 peak_data_rate;
+	le32 max_burst_size;
+	le32 delay_bound;
+	le32 min_phy_rate;
+	le16 sba;
+	le16 medium_time;
+} STRUCT_PACKED;
+
+
 #ifdef _MSC_VER
 #pragma pack(pop)
 #endif /* _MSC_VER */
@@ -670,6 +697,9 @@ struct ieee80211_ht_operation {
 /* 2 - Reserved */
 #define WMM_ADDTS_STATUS_REFUSED 3
 /* 4-255 - Reserved */
+
+#define IEEE80211_WMM_IE_TSPEC_TID_MASK		0x0F
+#define IEEE80211_WMM_IE_TSPEC_TID_SHIFT	1
 
 /* WMM TSPEC Direction Field Values */
 #define WMM_TSPEC_DIRECTION_UPLINK 0

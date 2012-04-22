@@ -2794,6 +2794,25 @@ static int wpa_cli_cmd_driver(struct wpa_ctrl *ctrl, int argc, char *argv[])
 	return wpa_ctrl_command(ctrl, cmd);
 }
 
+#ifdef TI_CCX
+static int wpa_cli_cmd_tspec_add(struct wpa_ctrl *ctrl, int argc,
+		char *argv[])
+{
+	char cmd[256];
+	int res;
+
+	if (argc != 1) {
+		printf("Invalid TSPEC command: needs one argument "
+				"voice or video\n");
+		return -1;
+	}
+
+	printf("%s: %s\n", __FUNCTION__, argv[0]);
+	res = os_snprintf(cmd, sizeof(cmd), "TSPEC_ADD %s", argv[0]);
+
+	return wpa_ctrl_command(ctrl, cmd);
+}
+#endif /* TI_CCX */
 
 enum wpa_cli_cmd_flags {
 	cli_cmd_flag_none		= 0x00,
@@ -3166,6 +3185,12 @@ static struct wpa_cli_cmd wpa_cli_commands[] = {
 	{ "driver", wpa_cli_cmd_driver,
 	  cli_cmd_flag_none,
 	  "<command> = driver private commands" },
+#ifdef TI_CCX
+	{ "tspec_add", wpa_cli_cmd_tspec_add,
+	  cli_cmd_flag_none,
+	  "= <<video> | <voice>> = set ts params" },
+#endif
+
 	{ NULL, NULL, cli_cmd_flag_none, NULL }
 };
 

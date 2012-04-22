@@ -113,6 +113,22 @@ inline int ieee80211_frequency_to_channel(int freq)
 
 int ccx_init(struct wpa_supplicant *wpa_s, const u8* mac_addr)
 {
+	int i;
+	wpa_s->ccx_l2 = l2_packet_init(wpa_s->ifname,
+			   mac_addr,
+			   ETH_P_ALL,
+			   ccx_recv, wpa_s, 1);
+
+	if (wpa_s->ccx_l2 == NULL)
+		return -1;
+
+	os_memset(wpa_s->prev_bssid, 0 , ETH_ALEN);
+	for (i = 0; i < 8; i++)
+		wpa_s->tspec_ie[i] = NULL;
+
+	wpa_s->pstRogueApList = NULL;
+
+	l2_packet_set_filter(wpa_s->ccx_l2, &ccx_filter);
 	return 0;
 }
 
@@ -1124,6 +1140,47 @@ struct iapp_hdr *ccx_build_iapp_hdr(struct wpa_supplicant *wpa_s,
 	return iapp;
 }
 
+int ccx_send_iapp_information(struct wpa_supplicant *wpa_s) {
+	int len;
+	struct iapp_frame *iapp =
+			os_zalloc(sizeof(struct iapp_hdr) + sizeof(struct iapp_report_info_ie));
+	struct iapp_report_info_ie *report_ie;
+	struct os_time now, time_diff;
+
+	if (iapp == NULL)
+		return -ENOMEM;
+
+	ccx_build_iapp_hdr(wpa_s, 0x30, 0, &iapp->hdr, &len);
+
+	if (len == 0)
+		return -1;
+
+	report_ie = (struct iapp_report_info_ie*)iapp->body;
+	report_ie->hdr.OUI[0] = 0x00; report_ie->hdr.OUI[1] = 0x40; report_ie->hdr.OUI[2] = 0x96;
+	report_ie->hdr.OUI_type = 0;
+	report_ie->hdr.id = host_to_be16(0x9b);
+	report_ie->hdr.length = host_to_be16(48);
+	report_ie->channel = host_to_be16(frequency_to_channel(wpa_s->prev_freq));
+	os_memcpy(report_ie->mac_addr, wpa_s->prev_bssid, ETH_ALEN);
+	report_ie->ssid_len = host_to_be16(wpa_s->ccx_prev_ssid_len);
+	os_memcpy(report_ie->ssid, wpa_s->ccx_prev_ssid, wpa_s->ccx_prev_ssid_len);
+	os_get_time(&now);
+	os_time_sub(&now, &wpa_s->new_connection_ts, &time_diff);
+	/* since the time should be shold the lower 16 bits should be enough */
+	report_ie->second_since_dissasoc = host_to_be16(time_diff.sec & 0xffff);
+
+	iapp->hdr.iapp_id_length += sizeof (struct iapp_report_info_ie);
+
+	len = iapp->hdr.iapp_id_length + 22;/* add 22 for the src + dest mac, and snap hdr */
+	iapp->hdr.iapp_id_length = ((iapp->hdr.iapp_id_length << 8) & 0xff00) +
+			((iapp->hdr.iapp_id_length >> 8) & 0xff);
+
+	l2_packet_send(wpa_s->ccx_l2, iapp->hdr.dest_mac_addr, 0, (u8*)iapp,
+			len);
+	return 0;
+
+}
+
 u8 ccx_parse_version(const u8 *buff, size_t buff_len)
 {
 	u8* pos = (u8*)buff;
@@ -1156,6 +1213,44 @@ int ccx_get_ccx_ie(struct wpa_sm* pstSm, BYTE *pbBuff, DWORD dwBuffLen) {
 	memset(pbBuff, 0, dwBuffLen);
 	memcpy(pbBuff, pstSm->ccx.ccx_ie, pstSm->ccx.ccx_ie_len);
 	return 0;
+}
+
+void ccx_event_delts(struct wpa_supplicant *wpa_s,
+		u8 tid, u8 reason_code)
+{
+	os_free(wpa_s->tspec_ie[tid]);
+	wpa_s->tspec_ie[tid] = NULL;
+}
+
+void ccx_event_addts(struct wpa_supplicant *wpa_s, u8 status,
+			u8* ie, u8 ie_len)
+{
+	struct ieee80211_tspec_ie *tspec = (struct ieee80211_tspec_ie*)ie;
+	if (status == 0) {
+		u8 tid = tspec->tsinfo >> IEEE80211_WMM_IE_TSPEC_TID_SHIFT &
+				IEEE80211_WMM_IE_TSPEC_TID_MASK;
+
+		wpa_s->tspec_ie[tid] = os_malloc(ie_len);
+		os_memcpy(wpa_s->tspec_ie[tid], ie, ie_len);
+	} else {
+		wpa_blacklist_add(wpa_s, wpa_s->bssid);
+		wpa_supplicant_deauthenticate(wpa_s, WLAN_REASON_UNSPECIFIED);
+		wpa_supplicant_req_scan(wpa_s, 1, 0);
+	}
+}
+
+void ccx_event_ie(struct wpa_supplicant *wpa_s,u8* ie, u8 ie_len)
+{
+	u8 type;
+	if ((ie[0] != WLAN_EID_VENDOR_SPECIFIC) ||
+					(memcmp(ie + 2, CCX_OUI, 3) != 0))
+		return;
+
+	type = ie[5];
+	switch (type) {
+	}
+
+	return;
 }
 
 void ccx_deinit_ies(struct wpa_sm* pstSm) {
