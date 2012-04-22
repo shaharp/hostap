@@ -1396,6 +1396,10 @@ EXTRALIBS += WbemUuid.Lib
 endif
 endif
 
+L_CFLAGS += -DTI_CCX
+OBJS += src/ccx/ccx.c
+OBJS += src/ccx/ccx_rogue_ap.c
+
 ifndef LDO
 LDO=$(CC)
 endif
