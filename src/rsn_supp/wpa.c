@@ -643,7 +643,7 @@ int wpa_supplicant_check_group_cipher(struct wpa_sm *sm,
 
 	switch (group_cipher) {
 	case WPA_CIPHER_CCMP:
-		if (keylen != 16 || maxkeylen < 16) {
+		if ((keylen != 16 || maxkeylen < 16) && (keylen != 24 || maxkeylen < 24)) {
 			ret = -1;
 			break;
 		}

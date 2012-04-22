@@ -116,6 +116,7 @@ typedef struct _OS_CCX_ROGUE_AP_DETECTED {
 
 #define CCKM_REQUEST_SIZE 26
 #define MD5_HASH_SIZE 16
+#define SHA1_HASH_SIZE 20
 
 struct cckm_resp;
 struct wpa_supplicant;

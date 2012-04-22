@@ -510,70 +510,92 @@ int wpa_ccx_build_beacon_report(struct wpa_supplicant *wpa_s,
 /* TODO : Check this OUI */
 static const BYTE CCKM_OUI_TYPE[] = { 0x00, 0x40, 0x96, 0x00 };
 int ccx_create_cckm_reassoc_req(struct wpa_supplicant* pstWpaSupp,
-		BYTE * pbWpaIe, DWORD dwWpaIeLen, BYTE* pbTimestamp, BYTE* pbBssid,
-		BYTE* pbCCKMRequest, DWORD dwCCKMRequestLen) {
+               BYTE * pbWpaIe, DWORD dwWpaIeLen, BYTE* pbTimestamp, BYTE* pbBssid,
+               BYTE* pbCCKMRequest, DWORD dwCCKMRequestLen) {
 
-	struct wpa_sm* pstSm = pstWpaSupp->wpa;
-	const BYTE* pabAddresses[5] = { 0 };
-	DWORD adwLengths[5] = { 0 };
-	BYTE abMd5Hash[MD5_HASH_SIZE];
-	BYTE abWpaLe32[4] = { 0 };
-	BYTE* pbPosition = NULL;
+       struct wpa_sm* pstSm = pstWpaSupp->wpa;
+       const BYTE* pabAddresses[5] = { 0 };
+       DWORD adwLengths[5] = { 0 };
+       BYTE abMd5Hash[MD5_HASH_SIZE];
+       BYTE abShaHash[SHA1_HASH_SIZE];
+       int iWpaIeId;
+       BYTE abWpaLe32[4] = { 0 };
+       BYTE* pbPosition = NULL;
 
-	wpa_printf(MSG_DEBUG, "CCKM: Creating Reassoction Request");
+       wpa_printf(MSG_DEBUG, "CCKM: Creating Reassoction Request");
 
-	pstSm->ccx.RN++;
-	pabAddresses[0] = pstSm->own_addr;
-	adwLengths[0] = ETH_ALEN;
+       iWpaIeId = *pbWpaIe;
 
-	BYTE* a = pbBssid;
-	wpa_printf(MSG_DEBUG, "CCKM: bssid is " MACSTR, MAC2STR(a));
-	pabAddresses[1] = pbBssid ? pbBssid : pstSm->bssid;
+       wpa_printf(MSG_DEBUG, "CCKM: ccx_create_cckm_reassoc_req: "
+				"Wpa IE ID: %d", iWpaIeId);
 
-	a = pstSm->bssid;
-	wpa_printf(MSG_DEBUG, "CCKM: sm is " MACSTR, MAC2STR(a));
-	adwLengths[1] = ETH_ALEN;
+       pstSm->ccx.RN++;
+       pabAddresses[0] = pstSm->own_addr;
+       adwLengths[0] = ETH_ALEN;
 
-	pabAddresses[2] = pbWpaIe;
-	adwLengths[2] = dwWpaIeLen;
+       BYTE* a = pbBssid;
+       wpa_printf(MSG_DEBUG, "CCKM: bssid is " MACSTR, MAC2STR(a));
+       pabAddresses[1] = pbBssid ? pbBssid : pstSm->bssid;
 
-	pabAddresses[3] = pbTimestamp;
-	adwLengths[3] = 8;
+       a = pstSm->bssid;
+       wpa_printf(MSG_DEBUG, "CCKM: sm is " MACSTR, MAC2STR(a));
+       adwLengths[1] = ETH_ALEN;
 
-	WPA_PUT_LE32(abWpaLe32, pstSm->ccx.RN);
-	pabAddresses[4] = abWpaLe32;
-	adwLengths[4] = sizeof(DWORD);
+       pabAddresses[2] = pbWpaIe;
+       adwLengths[2] = dwWpaIeLen;
 
-	hmac_md5_vector(pstSm->ccx.gk.krk, sizeof(pstSm->ccx.gk.krk), 5,
-			pabAddresses, adwLengths, abMd5Hash);
+       pabAddresses[3] = pbTimestamp;
+       adwLengths[3] = 8;
 
-	/* Compose CCKM request */
-	os_memset(pbCCKMRequest, 0, CCKM_REQUEST_SIZE);
-	pbPosition = pbCCKMRequest;
+       WPA_PUT_LE32(abWpaLe32, pstSm->ccx.RN);
+       pabAddresses[4] = abWpaLe32;
+       adwLengths[4] = sizeof(DWORD);
 
-	/* Byte 1 */
-	*pbPosition++ = CCKM_ELEMENT_ID;
+       if (iWpaIeId == 48) /* WPA2 */
+       {
+               hmac_sha1_vector(pstSm->ccx.gk.krk, sizeof(pstSm->ccx.gk.krk), 5,
+                               pabAddresses, adwLengths, abShaHash);
+       }
+       else
+       {
+               hmac_md5_vector(pstSm->ccx.gk.krk, sizeof(pstSm->ccx.gk.krk), 5,
+                               pabAddresses, adwLengths, abMd5Hash);
+       }
 
-	/* Byte 2 */
-	*pbPosition++ = 24;
+       /* Compose CCKM request */
+       os_memset(pbCCKMRequest, 0, CCKM_REQUEST_SIZE);
+       pbPosition = pbCCKMRequest;
 
-	/* Bytes 3-6 */
-	os_memcpy(pbPosition, CCKM_OUI_TYPE,4);
-	pbPosition += 4;
+       /* Byte 1 */
+       *pbPosition++ = CCKM_ELEMENT_ID;
 
-	/* Bytes 7-14 */
-	os_memcpy(pbPosition,(BYTE*)pbTimestamp,8);
-	pbPosition += 8;
+       /* Byte 2 */
+       *pbPosition++ = 24;
 
-	/* Bytes 15-18 */
-	os_memcpy(pbPosition,abWpaLe32,4);
-	pbPosition += 4;
+       /* Bytes 3-6 */
+       os_memcpy(pbPosition, CCKM_OUI_TYPE,4);
+       pbPosition += 4;
 
-	/* Bytes 19-26 */
-	os_memcpy(pbPosition,(BYTE*)&abMd5Hash,8);
-	pbPosition += 8;
+       /* Bytes 7-14 */
+       os_memcpy(pbPosition,(BYTE*)pbTimestamp,8);
+       pbPosition += 8;
 
-	return pbPosition - pbCCKMRequest;
+       /* Bytes 15-18 */
+       os_memcpy(pbPosition,abWpaLe32,4);
+       pbPosition += 4;
+
+       /* Bytes 19-26 */
+       if (iWpaIeId == 48) /* WPA2 */
+       {
+               os_memcpy(pbPosition,(BYTE*)&abShaHash,8);
+       }
+       else
+       {
+               os_memcpy(pbPosition,(BYTE*)&abMd5Hash,8);
+       }
+       pbPosition += 8;
+
+       return pbPosition - pbCCKMRequest;
 }
 
 int ccx_parse_cckm_response(struct wpa_supplicant* pstWpaSupp,
@@ -892,124 +914,144 @@ u8* ccx_event_cckm_start_handler(void *pCtx,
 }
 
 int ccx_parse_cckm_ie(struct wpa_sm* pstSm, const BYTE* pbCCKMIe,
-		BYTE* pbOwnAddress, BYTE* pbBssid) {
+               BYTE* pbOwnAddress, BYTE* pbBssid) {
 
-	struct cckm_resp * pstHeader = (struct cckm_resp *) pbCCKMIe;
-	struct wpa_ie_data stIeData = { 0 };
-	DWORD dwKeyLen = 0;
-	DWORD dwRN = 0;
-	const unsigned char *pabAddresses[4] = { NULL };
-	DWORD dwLengths[4] = { 0 };
-	BYTE abMic[MD5_MAC_LEN] = { 0 };
-	BYTE abBuff[8] = { 0 };
-	struct wpa_ptk *pstPtk = NULL;
-	DWORD dwPtkLen = 0;
+       struct cckm_resp * pstHeader = (struct cckm_resp *) pbCCKMIe;
+       struct wpa_ie_data stIeData = { 0 };
+       DWORD dwKeyLen = 0;
+       DWORD dwRN = 0;
+       const unsigned char *pabAddresses[4] = { NULL };
+       DWORD dwLengths[4] = { 0 };
+       BYTE abMicMd[MD5_MAC_LEN] = { 0 };
+       BYTE abMicSha[SHA1_MAC_LEN] = { 0 };
+       BYTE abBuff[8] = { 0 };
+       struct wpa_ptk *pstPtk = NULL;
+       DWORD dwPtkLen = 0;
 
-	if (NULL == pbCCKMIe) {
-		wpa_printf(MSG_ERROR, "CCKM: No CCKM IE");
-		return -1;
-	}
+       if (NULL == pbCCKMIe) {
+               wpa_printf(MSG_ERROR, "CCKM: No CCKM IE");
+               return -1;
+       }
 
-	if (NULL == pstSm->assoc_wpa_ie) {
-		wpa_printf(MSG_ERROR, "CCKM: Missing association request IE");
-		return -1;
-	} else if (-1 == wpa_parse_wpa_ie(pstSm->assoc_wpa_ie,
-			pstSm->assoc_wpa_ie_len, &stIeData)) {
-		wpa_printf(MSG_ERROR, "CCKM: Invalid association Request IE");
-		return -1;
-	}
+       if (NULL == pstSm->assoc_wpa_ie) {
+               wpa_printf(MSG_ERROR, "CCKM: Missing association request IE");
+               return -1;
+       } else if (-1 == wpa_parse_wpa_ie(pstSm->assoc_wpa_ie,
+                       pstSm->assoc_wpa_ie_len, &stIeData)) {
+               wpa_printf(MSG_ERROR, "CCKM: Invalid association Request IE");
+               return -1;
+       }
 
-	if (FALSE == (stIeData.key_mgmt & KEY_MGMT_CCKM_BIT)) {
-		wpa_printf(MSG_ERROR, "CCKM: CCKM was not Negotiated");
-		return -1;
-	}
+       if (FALSE == (stIeData.key_mgmt & KEY_MGMT_CCKM_BIT)) {
+               wpa_printf(MSG_ERROR, "CCKM: CCKM was not Negotiated");
+               return -1;
+       }
 
-	if (os_memcmp(pstHeader->oui, CCKM_OUI_TYPE, sizeof(DWORD))) {
-		wpa_hexdump(MSG_ERROR, "CCKM: Invalid OUI type", pstHeader->oui,
-				sizeof(DWORD));
-		return -1;
-	}
+       if (os_memcmp(pstHeader->oui, CCKM_OUI_TYPE, sizeof(DWORD))) {
+               wpa_hexdump(MSG_ERROR, "CCKM: Invalid OUI type", pstHeader->oui,
+                               sizeof(DWORD));
+               return -1;
+       }
 
-	dwRN = WPA_GET_LE32(pstHeader->rn);
-	if (pstSm->ccx.RN != dwRN) {
-		wpa_printf(MSG_ERROR, "CCKM: RN mismatch: Response: %ld, "
-			"Request-expected >= %ld", (unsigned long) dwRN,
-				(unsigned long) pstSm->ccx.RN);
-		return -1;
-	}
+       dwRN = WPA_GET_LE32(pstHeader->rn);
+       if (pstSm->ccx.RN != dwRN) {
+               wpa_printf(MSG_ERROR, "CCKM: RN mismatch: Response: %ld, "
+                       "Request-expected >= %ld", (unsigned long) dwRN,
+                               (unsigned long) pstSm->ccx.RN);
+               return -1;
+       }
 
-	dwPtkLen = 64;
-	if (pstSm->pairwise_cipher == WPA_CIPHER_CCMP) {
-		dwPtkLen = 48;
-		wpa_printf(MSG_ERROR, "CCKM: Parsing IE : Ptk Length is 48 instead of 64 because chiper is CCMP");
-	}
+       dwPtkLen = 64;
+       if (pstSm->pairwise_cipher == WPA_CIPHER_CCMP) {
+               dwPtkLen = 48;
+               wpa_printf(MSG_DEBUG, "CCKM: Parsing IE : Ptk Length is 48 "
+					"instead of 64 because chiper is CCMP");
+       }
 
-	ccx_btk_to_ptk(pstSm->ccx.gk.btk, sizeof(pstSm->ccx.gk.btk), pstSm->ccx.RN,
-			pbBssid, (BYTE *) &pstSm->tptk, dwPtkLen);
-	wpa_printf(MSG_DEBUG, "CCKM: finished to calculate PTK again");
+       ccx_btk_to_ptk(pstSm->ccx.gk.btk, sizeof(pstSm->ccx.gk.btk), pstSm->ccx.RN,
+                       pbBssid, (BYTE *) &pstSm->tptk, dwPtkLen);
+       wpa_printf(MSG_DEBUG, "CCKM: finished to calculate PTK again");
 
-	dwKeyLen = WPA_GET_LE16(pstHeader->key_length);
-	if ((BYTE) (pstHeader->length + 2) != (sizeof(struct cckm_resp) + dwKeyLen)) {
-		wpa_printf(MSG_ERROR, "CCKM: invalid resp ie length: %d, expected: %d",
-				pstHeader->length, sizeof(struct cckm_resp) + dwKeyLen - 2);
-		return -1;
-	}
+       dwKeyLen = WPA_GET_LE16(pstHeader->key_length);
+       if ((BYTE) (pstHeader->length + 2) != (sizeof(struct cckm_resp) + dwKeyLen)) {
+               wpa_printf(MSG_ERROR, "CCKM: invalid resp ie length: %d, expected: %d",
+                               pstHeader->length, sizeof(struct cckm_resp) + dwKeyLen - 2);
+               return -1;
+       }
 
-	/* STA-ID */
-	pabAddresses[0] = pbOwnAddress;
-	dwLengths[0] = ETH_ALEN;
+       /* STA-ID */
+       pabAddresses[0] = pbOwnAddress;
+       dwLengths[0] = ETH_ALEN;
 
-	/* RSNIE (AP) */
-	if (stIeData.proto == WPA_PROTO_RSN) {
-		wpa_printf(MSG_DEBUG, "CCKM: proto is RSN");
-		pabAddresses[1] = pstSm->ap_rsn_ie;
-		dwLengths[1] = pstSm->ap_rsn_ie_len;
-	} else {
-		wpa_printf(MSG_DEBUG, "CCKM: proto is WPA");
-		pabAddresses[1] = pstSm->ap_wpa_ie;
-		dwLengths[1] = pstSm->ap_wpa_ie_len;
-	}
+       /* RSNIE (AP) */
+       if (stIeData.proto == WPA_PROTO_RSN) {
+               wpa_printf(MSG_DEBUG, "CCKM: proto is RSN");
+               pabAddresses[1] = pstSm->ap_rsn_ie;
+               dwLengths[1] = pstSm->ap_rsn_ie_len;
+       } else {
+               wpa_printf(MSG_DEBUG, "CCKM: proto is WPA");
+               pabAddresses[1] = pstSm->ap_wpa_ie;
+               dwLengths[1] = pstSm->ap_wpa_ie_len;
+       }
 
-	/* RN,KeyIdUnicast,KeyIdMulticast,RSC,MulticastKeyLen */
-	pabAddresses[2] = pstHeader->rn;
-	dwLengths[2] = pstHeader->mic - pstHeader->rn;
+       /* RN,KeyIdUnicast,KeyIdMulticast,RSC,MulticastKeyLen */
+       pabAddresses[2] = pstHeader->rn;
+       dwLengths[2] = pstHeader->mic - pstHeader->rn;
 
-	if (dwKeyLen > 0) {
-		/* EGTK */
-		wpa_printf(MSG_DEBUG, "CCKM: EGTK Length is %d", dwKeyLen);
-		pabAddresses[3] = (BYTE*) &pstHeader[1];
-		dwLengths[3] = dwKeyLen;
-	} else {
-		wpa_printf(MSG_ERROR, "CCKM: Error with EGTK");
-		return -1;
-	}
+       if (dwKeyLen > 0) {
+               /* EGTK */
+               wpa_printf(MSG_DEBUG, "CCKM: EGTK Length is %d", dwKeyLen);
+               pabAddresses[3] = (BYTE*) &pstHeader[1];
+               dwLengths[3] = dwKeyLen;
+       } else {
+               wpa_printf(MSG_ERROR, "CCKM: Error with EGTK");
+               return -1;
+       }
 
-	pstPtk = &pstSm->tptk;
-	hmac_md5_vector(pstPtk->kck, sizeof(pstPtk->kck), 4, pabAddresses,
-			dwLengths, abMic);
+       pstPtk = &pstSm->tptk;
 
-	if (os_memcmp(abMic, pstHeader->mic, sizeof(pstHeader->mic)) != 0) {
-		wpa_hexdump(MSG_ERROR, "CCKM: Computed mic mismatch", abMic, 8);
-		ccx_print_buf(MSG_ERROR, "CCKM: Calculated MIC: ", abMic, 16);
-		ccx_print_buf(MSG_ERROR, "CCKM: Should be MIC: ", pstHeader->mic, 8);
-		return -1;
-	}
+       if (stIeData.proto == WPA_PROTO_RSN)
+       {
+               hmac_sha1_vector(pstPtk->kck, sizeof(pstPtk->kck), 4, pabAddresses,
+                               dwLengths, abMicSha);
 
-	wpa_printf(MSG_DEBUG, "CCKM: Ready for CCKM reassociation");
-	pstSm->ccx.resp = os_malloc(pstHeader->length + 2);
-	if (!pstSm->ccx.resp) {
-		wpa_printf(MSG_ERROR, "CCKM: cannot malloc resp copy");
-		return -1;
-	}
+               if (os_memcmp(abMicSha, pstHeader->mic, sizeof(pstHeader->mic)) != 0) {
+                       wpa_hexdump(MSG_ERROR, "CCKM: Computed mic mismatch", abMicSha, 8);
+                       ccx_print_buf(MSG_ERROR, "CCKM: Calculated MIC: ", abMicSha, 20);
+                       ccx_print_buf(MSG_ERROR, "CCKM: Should be MIC: ", pstHeader->mic, 8);
+                       return -1;
+               }
+       }
+       else
+       {
+               hmac_md5_vector(pstPtk->kck, sizeof(pstPtk->kck), 4, pabAddresses,
+                               dwLengths, abMicMd);
 
-	os_memcpy(pstSm->ccx.resp, (BYTE*) pstHeader, pstHeader->length + 2);
+               if (os_memcmp(abMicMd, pstHeader->mic, sizeof(pstHeader->mic)) != 0) {
+                       wpa_hexdump(MSG_ERROR, "CCKM: Computed mic mismatch", abMicMd, 8);
+                       ccx_print_buf(MSG_ERROR, "CCKM: Calculated MIC: ", abMicMd, 16);
+                       ccx_print_buf(MSG_ERROR, "CCKM: Should be MIC: ", pstHeader->mic, 8);
+                       return -1;
+               }
+       }
 
-	/* Supplicant: swap tx/rx Mic keys */
-	os_memcpy(abBuff, pstPtk->u.auth.tx_mic_key, 8);
-	os_memcpy(pstPtk->u.auth.tx_mic_key, pstPtk->u.auth.rx_mic_key, 8);
-	os_memcpy(pstPtk->u.auth.rx_mic_key, abBuff, 8);
-	pstSm->ccx.cckm_valid = 1;
-	return 0;
+
+
+       wpa_printf(MSG_ERROR, "CCKM: Ready for CCKM reassociation");
+       pstSm->ccx.resp = os_malloc(pstHeader->length + 2);
+       if (!pstSm->ccx.resp) {
+               wpa_printf(MSG_ERROR, "CCKM: cannot malloc resp copy");
+               return -1;
+       }
+
+       os_memcpy(pstSm->ccx.resp, (BYTE*) pstHeader, pstHeader->length + 2);
+
+       /* Supplicant: swap tx/rx Mic keys */
+       os_memcpy(abBuff, pstPtk->u.auth.tx_mic_key, 8);
+       os_memcpy(pstPtk->u.auth.tx_mic_key, pstPtk->u.auth.rx_mic_key, 8);
+       os_memcpy(pstPtk->u.auth.rx_mic_key, abBuff, 8);
+       pstSm->ccx.cckm_valid = 1;
+       return 0;
 
 }
 
