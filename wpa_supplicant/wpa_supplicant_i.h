@@ -579,6 +579,16 @@ struct wpa_supplicant {
 	int cckm_available;
 	struct CCX_ROGUEAP_LIST_s * pstRogueApList;
 	int ccx_roaming;
+	struct l2_packet_data *ccx_l2;
+
+	int is_measurement_in_progress;
+	struct iapp_frame *measurement_request_frame;
+	int measurement_request_left;
+	u8* measurement_request_pos;
+	int measurement_complete;
+	struct ccx_measurement_request_ie request_in_progress;
+	struct os_time scan_request_ts;
+
 	int user_tx_power;
 	int tx_power;
 #endif /* TI_CCX */

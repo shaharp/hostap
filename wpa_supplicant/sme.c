@@ -294,6 +294,20 @@ if (wpa_s->sme.assoc_req_ie_len + CCX_VERSION_IE_LEN + 2 <
 		*pos++ = CCX_SUPPORTED_VERSION;
 		wpa_s->sme.assoc_req_ie_len += CCX_VERSION_IE_LEN + 2;
 	}
+	if (wpa_s->sme.assoc_req_ie_len + CCX_RM_CAPABILITY_IE_LEN + 2 <
+			sizeof(wpa_s->sme.assoc_req_ie)) {
+		u8 *pos = wpa_s->sme.assoc_req_ie +
+				wpa_s->sme.assoc_req_ie_len;
+		*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+		*pos++ = CCX_RM_CAPABILITY_IE_LEN;
+		*pos++ = 0x00;
+		*pos++ = 0x40;
+		*pos++ = 0x96;
+		*pos++ = CCX_RM_CAPABILITY_IE_ID;
+		*pos++ = 1;
+		*pos++ = 0;
+		wpa_s->sme.assoc_req_ie_len += CCX_RM_CAPABILITY_IE_LEN + 2;
+	}
 #endif /* TI_CCX */
 	wpa_supplicant_cancel_sched_scan(wpa_s);
 	wpa_supplicant_cancel_scan(wpa_s);

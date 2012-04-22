@@ -10,6 +10,9 @@
 #include <sys/ioctl.h>
 #include <netpacket/packet.h>
 #include <net/if.h>
+#ifdef TI_CCX
+#include <linux/filter.h>
+#endif /*TI_CCX*/
 
 #include "common.h"
 #include "eloop.h"
@@ -202,3 +205,16 @@ int l2_packet_get_ip_addr(struct l2_packet_data *l2, char *buf, size_t len)
 void l2_packet_notify_auth_start(struct l2_packet_data *l2)
 {
 }
+
+#ifdef TI_CCX
+void l2_packet_set_filter(struct l2_packet_data *l2, void *filter)
+{
+	struct sock_fprog *sfilter = (struct sock_fprog*)filter;
+	/* Add ccx filter to socket */
+		if (setsockopt(l2->fd, SOL_SOCKET, SO_ATTACH_FILTER,
+				sfilter, sizeof(*sfilter))) {
+			perror("SO_ATTACH_FILTER");
+			return;
+		}
+}
+#endif /*TI_CCX*/

@@ -1089,7 +1089,13 @@ static int _wpa_supplicant_event_scan_results(struct wpa_supplicant *wpa_s,
 		wpa_supplicant_req_new_scan(wpa_s, 1, 0);
 		return -1;
 	}
-
+#ifdef TI_CCX
+	if (wpa_s->is_measurement_in_progress)
+	{
+		ccx_measurement_beacon_scan_complete(wpa_s, scan_res);
+		return -1;
+	}
+#endif /* TI_CCX */
 #ifndef CONFIG_NO_RANDOM_POOL
 	size_t i, num;
 	num = scan_res->num;

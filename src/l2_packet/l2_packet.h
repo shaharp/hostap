@@ -121,4 +121,7 @@ int l2_packet_get_ip_addr(struct l2_packet_data *l2, char *buf, size_t len);
  */
 void l2_packet_notify_auth_start(struct l2_packet_data *l2);
 
+#ifdef TI_CCX
+void l2_packet_set_filter(struct l2_packet_data *l2, void *filter);
+#endif /*TI_CCX*/
 #endif /* L2_PACKET_H */
