@@ -1974,7 +1974,8 @@ static int nl80211_get_ts_metrics(void* priv, u8 tid,
 	return -ENOBUFS;
 }
 
-static int nl80211_set_tspec(void *priv, struct tspec_params *tspec_params)
+static int nl80211_set_tspec(void *priv, u8 action, u8 status,
+		struct tspec_params *tspec_params)
 {
 	struct i802_bss *bss = priv;
 	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -1992,8 +1993,8 @@ static int nl80211_set_tspec(void *priv, struct tspec_params *tspec_params)
 			    0, NL80211_CMD_TSPEC, 0);
 
 	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, drv->ifindex);
-	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_ACTION_CODE, 0);
-	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_STATUS_CODE, 0);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_ACTION_CODE, action);
+	NLA_PUT_U8(msg, NL80211_ATTR_TSPEC_STATUS_CODE, status);
 
 	tspec = nla_nest_start(msg, NL80211_ATTR_TSPEC);
 	if (!tspec) {

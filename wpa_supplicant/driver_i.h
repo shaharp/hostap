@@ -1,5 +1,5 @@
 /*
- * wpa_supplicant - Internal driver interface wrappers
+o * wpa_supplicant - Internal driver interface wrappers
  * Copyright (c) 2003-2009, Jouni Malinen <j@w1.fi>
  *
  * This software may be distributed under the terms of the BSD license.
@@ -723,11 +723,13 @@ static inline int wpa_drv_get_ts_metrics(struct wpa_supplicant *wpa_s, u8 tid,
 }
 
 static inline int wpa_drv_set_tspec(struct wpa_supplicant *wpa_s,
+		u8 action, u8 status,
 		struct tspec_params *tspec_params) {
 	if (!wpa_s->driver->set_tspec)
 		return -1;
 
-	return wpa_s->driver->set_tspec(wpa_s->drv_priv, tspec_params);
+	return wpa_s->driver->set_tspec(wpa_s->drv_priv,
+			action, status, tspec_params);
 }
 #endif /* TI_CCX */
 #endif /* DRIVER_I_H */

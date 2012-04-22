@@ -2812,6 +2812,24 @@ static int wpa_cli_cmd_tspec_add(struct wpa_ctrl *ctrl, int argc,
 
 	return wpa_ctrl_command(ctrl, cmd);
 }
+
+static int wpa_cli_cmd_tspec_del(struct wpa_ctrl *ctrl, int argc,
+		char *argv[])
+{
+	char cmd[256];
+	int res;
+
+	if (argc != 1) {
+		printf("Invalid TSPEC command: needs one argument "
+				"voice or video\n");
+		return -1;
+	}
+
+	printf("%s: %s\n", __FUNCTION__, argv[0]);
+	res = os_snprintf(cmd, sizeof(cmd), "TSPEC_DEL %s", argv[0]);
+
+	return wpa_ctrl_command(ctrl, cmd);
+}
 #endif /* TI_CCX */
 
 enum wpa_cli_cmd_flags {
@@ -3188,7 +3206,11 @@ static struct wpa_cli_cmd wpa_cli_commands[] = {
 #ifdef TI_CCX
 	{ "tspec_add", wpa_cli_cmd_tspec_add,
 	  cli_cmd_flag_none,
-	  "= <<video> | <voice>> = set ts params" },
+	  "= <<video> | <voice>>" },
+	{ "tspec_del", wpa_cli_cmd_tspec_del,
+	  cli_cmd_flag_none,
+	  "= <<video> | <voice>>" },
+
 #endif
 
 	{ NULL, NULL, cli_cmd_flag_none, NULL }

@@ -2679,7 +2679,8 @@ struct wpa_driver_ops {
 	int (*get_ts_metrics)(void *priv, u8 tid,
 					   struct wpa_ts_metric *ts_metrics);
 
-	int (*set_tspec)(void *priv, struct tspec_params *tspec_param);
+	int (*set_tspec)(void *priv, u8 action, u8 status,
+			struct tspec_params *tspec_param);
 #endif /* TI_CCX */
 };
 
