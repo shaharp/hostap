@@ -1904,6 +1904,76 @@ static int nl80211_get_noise_for_scan_results(
 }
 
 #ifdef TI_CCX
+static int get_ts_metrics(struct nl_msg *msg, void *arg)
+{
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct nlattr *sinfo[NL80211_STA_INFO_MAX + 1];
+
+	static struct nla_policy sta_policy[NL80211_STA_INFO_MAX + 1] = {
+			[NL80211_STA_INFO_PACKET_COUNT] = { .type = NLA_U32 },
+			[NL80211_STA_INFO_PACKET_LOST] = { .type = NLA_U32 },
+			[NL80211_STA_INFO_QUEUE_DELAY] = { .type = NLA_U32 },
+			[NL80211_STA_INFO_TRANSMIT_DELAY] = { .type = NLA_U32 },
+			[NL80211_STA_INFO_QUEUE_DELAY_HIST] = {.type = NLA_UNSPEC,}
+	};
+	struct wpa_ts_metric *ts_metrics = arg;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+	if (!tb[NL80211_ATTR_STA_INFO] ||
+	    nla_parse_nested(sinfo, NL80211_STA_INFO_MAX,
+			     tb[NL80211_ATTR_STA_INFO], sta_policy))
+		return NL_SKIP;
+
+	if (sinfo[NL80211_STA_INFO_PACKET_COUNT])
+		ts_metrics->packet_count =
+				nla_get_u32(sinfo[NL80211_STA_INFO_PACKET_COUNT]);
+
+	if (sinfo[NL80211_STA_INFO_PACKET_LOST])
+		ts_metrics->packet_lost =
+				nla_get_u32(sinfo[NL80211_STA_INFO_PACKET_LOST]);
+
+	if (sinfo[NL80211_STA_INFO_QUEUE_DELAY])
+		ts_metrics->packet_queue_delay =
+				nla_get_u32(sinfo[NL80211_STA_INFO_QUEUE_DELAY]);
+
+	if (sinfo[NL80211_STA_INFO_TRANSMIT_DELAY])
+		ts_metrics->packet_transmit_delay =
+				nla_get_u32(sinfo[NL80211_STA_INFO_TRANSMIT_DELAY]);
+
+	if (sinfo[NL80211_STA_INFO_QUEUE_DELAY_HIST]) {
+		os_memcpy(ts_metrics->packet_delay_histogram,
+				nla_data(sinfo[NL80211_STA_INFO_QUEUE_DELAY_HIST]), 8);
+	}
+
+	return NL_SKIP;
+}
+
+static int nl80211_get_ts_metrics(void* priv, u8 tid,
+				   struct wpa_ts_metric *ts_metrics)
+{
+	struct i802_bss *bss = priv;
+	struct wpa_driver_nl80211_data *drv = bss->drv;
+
+	struct nl_msg *msg;
+
+	msg = nlmsg_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	genlmsg_put(msg, 0, 0, drv->global->nl80211_id, 0,
+		    0, NL80211_CMD_GET_TS_METRICS, 0);
+
+	NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, drv->ifindex);
+	NLA_PUT(msg, NL80211_ATTR_MAC, ETH_ALEN, drv->bssid);
+	NLA_PUT_U8(msg, NL80211_ATTR_TID, tid);
+
+	return send_and_recv_msgs(drv, msg, get_ts_metrics, ts_metrics);
+ nla_put_failure:
+	return -ENOBUFS;
+}
+
 static int nl80211_set_tspec(void *priv, struct tspec_params *tspec_params)
 {
 	struct i802_bss *bss = priv;
@@ -9986,6 +10056,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
 	.driver_cmd = wpa_driver_nl80211_driver_cmd,
 #endif /* ANDROID */
 #ifdef TI_CCX
+	.get_ts_metrics = nl80211_get_ts_metrics,
 	.set_tspec = nl80211_set_tspec,
 #endif
 };

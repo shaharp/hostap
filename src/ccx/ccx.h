@@ -153,6 +153,73 @@ struct ccx_ie_hdr {
 	u8 OUI_type;
 } STRUCT_PACKED;
 
+struct iapp_report_info_ie {
+	struct ccx_ie_hdr hdr;
+	u8 mac_addr[ETH_ALEN];
+	u16 channel;
+	u16 ssid_len;
+	u8 ssid[32];
+	u16 second_since_dissasoc;
+} STRUCT_PACKED;
+
+struct ccx_measurement_request {
+	u16 dialog_token;
+	u8 activation_delay;
+	u8 measurement_offset;
+	u8 measurement_request_ie[0];
+} STRUCT_PACKED;
+
+struct ccx_measurement_ie_hdr {
+	u16 id;
+	u16 length;
+	u16 token;
+	u8 mode;
+	u8 type;
+} STRUCT_PACKED;
+
+struct ccx_measurement_request_ie {
+	struct ccx_measurement_ie_hdr hdr;
+	u8 channel;
+	u8 scan_mode;
+	u16 duration;
+} STRUCT_PACKED;
+
+struct ccx_measurement_report {
+	u16 dialog_token;
+	/* must be last */
+	u8 report_ie[0];
+} STRUCT_PACKED;
+
+struct ccx_measurement_report_ie {
+	struct ccx_measurement_ie_hdr hdr;
+	u8 measurement_report[0];
+} STRUCT_PACKED;
+
+struct ccx_beacon_report{
+	u8 channel;
+	u8 spare;
+	u16 duration;
+	u8 phy_type;
+	s8 received_signal_pwr;
+	u8 bssid[ETH_ALEN];
+	u32 parent_tsf;
+	u64 target_tsf;
+	u16 beacon_interval;
+	u16 capability_info;
+	/* must be last */
+	u8 received_elements[0];
+} STRUCT_PACKED ;
+
+struct ccx_tsm_report {
+	u16 queue_delay;
+	u16 queue_delay_histogram[4];
+	u32 transmit_delay;
+	u16 packet_lost;
+	u16 packet_count;
+	u8 roaming_count;
+	u16 roaming_delay;
+} STRUCT_PACKED;
+
 typedef struct ccx_data {
 	int cckm_available;
 	struct cckm_resp* resp;
@@ -234,6 +301,12 @@ typedef struct _OS_CCX_CCKM_START {
 #define CCX_OUI_0 0x00
 #define CCX_OUI_1 0x40
 #define CCX_OUI_2 0x96
+
+struct tsm_data {
+	u8 tid;
+	int secs;
+	int usecs;
+};
 
 int ccx_init(struct wpa_supplicant *wpa_s, const u8* mac_addr);
 
@@ -355,5 +428,10 @@ void ccx_event_addts(struct wpa_supplicant *wpa_s, u8 status,
 		u8* ie, u8 ie_len);
 
 void ccx_event_ie(struct wpa_supplicant *wpa_s,u8* ie, u8 ie_len);
+
+void ccx_register_tsm_timeout(struct wpa_supplicant *wpa_s,
+		int sec, int usec, struct tsm_data* tsm);
+
+void ccx_stop_tsm(struct wpa_supplicant *wpa_s);
 
 #endif /* _CCX_H_ */

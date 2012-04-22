@@ -664,8 +664,15 @@ void wpa_supplicant_set_state(struct wpa_supplicant *wpa_s,
 			wpa_drv_set_tx_power(wpa_s, 0, wpa_s->tx_power * 100);
 		}
 		if (!is_zero_ether_addr(wpa_s->prev_bssid)) {
+			struct os_time now, delay;
+			os_get_time(&now);
+			wpa_s->roam_count++;
+			os_time_sub(&now, &wpa_s->roam_ts, &delay);
+			wpa_s->roam_delay = (delay.sec * 1000) +
+					(delay.usec / 1000);
 			ccx_send_iapp_information(wpa_s);
-		}
+		} else
+			wpa_s->roam_count = 0;
 
 		wpa_s->prev_freq = wpa_s->assoc_freq;
 		os_memcpy(wpa_s->prev_bssid, wpa_s->bssid, ETH_ALEN);

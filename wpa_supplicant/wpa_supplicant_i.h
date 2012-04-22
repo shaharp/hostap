@@ -304,6 +304,9 @@ struct wpa_supplicant {
 	int ccx_prev_ssid_len;
 	u8 ccx_prev_ssid[MAX_SSID_LEN];
 	struct os_time new_connection_ts;
+	int roam_count;
+	struct os_time roam_ts;
+	int roam_delay;
 #endif /* TI_CCX */
 
 	/* Selected configuration (based on Beacon/ProbeResp WPA IE) */
@@ -597,6 +600,7 @@ struct wpa_supplicant {
 
 	int user_tx_power;
 	int tx_power;
+	struct tsm_data tsm;
 	u8 *tspec_ie[8]; /* hold a tspec for each tid */
 
 #endif /* TI_CCX */

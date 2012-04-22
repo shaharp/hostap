@@ -1215,11 +1215,96 @@ int ccx_get_ccx_ie(struct wpa_sm* pstSm, BYTE *pbBuff, DWORD dwBuffLen) {
 	return 0;
 }
 
+static void ccx_tsm_timeout(void *eloop_ctx, void *timeout_ctx) {
+	int len;
+	struct wpa_ts_metric ts_metrics;
+	struct wpa_supplicant *wpa_s = eloop_ctx;
+	struct tsm_data* tsm = (struct tsm_data*)timeout_ctx;
+	struct ccx_measurement_report *report;
+	struct ccx_measurement_report_ie *report_ie;
+	struct ccx_tsm_report *tsm_report;
+	struct iapp_frame *frame = os_zalloc(sizeof(struct iapp_frame) +
+			sizeof(struct ccx_measurement_report) +
+			sizeof(struct ccx_measurement_report_ie) +
+			sizeof(struct ccx_tsm_report));
+
+	if (frame == NULL) {
+		return;
+	}
+
+	len = wpa_ccx_build_iapp_hdr(wpa_s, frame, 0x32, 0x81);
+	os_memset(frame->hdr.dest_mac_addr, 0, ETH_ALEN);
+
+	report = (struct ccx_measurement_report*)frame->body;
+	report->dialog_token = 0;
+	len += sizeof(report->dialog_token);
+
+	report_ie = (struct ccx_measurement_report_ie*)report->report_ie;
+	report_ie->hdr.id = CCX_MEASUREMENT_RESP_ID;
+	report_ie->hdr.length = 25;
+	report_ie->hdr.token = 0;
+	report_ie->hdr.mode = 0;
+	report_ie->hdr.type = CCX_MSR_TYPE_TSM;
+	len += sizeof(struct ccx_measurement_report_ie);
+
+	tsm_report = (struct ccx_tsm_report*)report_ie->measurement_report;
+
+	wpa_printf(MSG_DEBUG, "%s: tid = %d\n",	__FUNCTION__, tsm->tid);
+	wpa_drv_get_ts_metrics(wpa_s, tsm->tid, &ts_metrics);
+
+	os_memset(tsm_report, 0, sizeof(*tsm_report));
+
+	if (ts_metrics.packet_count) {
+		tsm_report->queue_delay = (ts_metrics.packet_queue_delay/1000) /
+				ts_metrics.packet_count;
+		tsm_report->transmit_delay = ts_metrics.packet_transmit_delay /
+				ts_metrics.packet_count;
+	}
+	tsm_report->queue_delay_histogram[0] = ts_metrics.packet_delay_histogram[0];
+	tsm_report->queue_delay_histogram[1] = ts_metrics.packet_delay_histogram[2];
+	tsm_report->queue_delay_histogram[2] = ts_metrics.packet_delay_histogram[2];
+	tsm_report->queue_delay_histogram[3] = ts_metrics.packet_delay_histogram[3];
+
+	tsm_report->packet_lost = ts_metrics.packet_lost;
+	tsm_report->packet_count = ts_metrics.packet_count;
+	tsm_report->roaming_count = wpa_s->roam_count;
+	tsm_report->roaming_delay = wpa_s->roam_delay;
+
+	len += sizeof(struct ccx_tsm_report);
+
+	wpa_printf(MSG_DEBUG, "%s: tid = %d, received from kernel:"
+			"count %d, lost %d\nqueue_delay %d, transmit_delay %d\n",
+			__FUNCTION__, tsm->tid,
+			ts_metrics.packet_count, ts_metrics.packet_lost,
+			ts_metrics.packet_queue_delay, ts_metrics.packet_transmit_delay);
+
+	frame->hdr.iapp_id_length = len - 22;
+	frame->hdr.iapp_id_length = be_to_host16(frame->hdr.iapp_id_length);
+
+	l2_packet_send(wpa_s->ccx_l2, frame->hdr.dest_mac_addr, 0, (u8*)frame, len);
+
+/*	if (i++ < 10)*/
+	ccx_register_tsm_timeout(wpa_s, tsm->secs, tsm->usecs, tsm);
+}
+
+void ccx_register_tsm_timeout(struct wpa_supplicant *wpa_s,
+				     int sec, int usec, struct tsm_data* tsm)
+{
+	eloop_cancel_timeout(ccx_tsm_timeout, wpa_s, tsm);
+	eloop_register_timeout(sec, usec, ccx_tsm_timeout, wpa_s, tsm);
+}
+
 void ccx_event_delts(struct wpa_supplicant *wpa_s,
 		u8 tid, u8 reason_code)
 {
+	eloop_cancel_timeout(ccx_tsm_timeout, wpa_s, &wpa_s->tsm);
 	os_free(wpa_s->tspec_ie[tid]);
 	wpa_s->tspec_ie[tid] = NULL;
+}
+
+void ccx_stop_tsm(struct wpa_supplicant *wpa_s)
+{
+	eloop_cancel_timeout(ccx_tsm_timeout, wpa_s, &wpa_s->tsm);
 }
 
 void ccx_event_addts(struct wpa_supplicant *wpa_s, u8 status,
@@ -1248,6 +1333,27 @@ void ccx_event_ie(struct wpa_supplicant *wpa_s,u8* ie, u8 ie_len)
 
 	type = ie[5];
 	switch (type) {
+	case 7:
+		{
+			u8 tid = ie[6];
+			u8 state = ie[7];
+			u16 interval = WPA_GET_LE16(ie+8);
+			int seconds = (interval*1024)/1000000;
+			int usecs = (interval*1024)%1000000;
+			struct tsm_data *tsm = &wpa_s->tsm;
+			tsm->secs = (interval*1024)/1000000;
+			tsm->usecs = (interval*1024)%1000000;
+			tsm->tid = tid;
+
+			wpa_printf(MSG_ERROR, "%s: TSM IE: tid %d, state %d, interval %d"
+					" (%d.%06d sec)\n", __FUNCTION__, tid, state, interval,
+					seconds, usecs);
+			if (state) {
+				ccx_register_tsm_timeout(wpa_s, seconds, usecs, tsm);
+			} else
+				eloop_cancel_timeout(ccx_tsm_timeout, wpa_s, tsm);
+			break;
+		}
 	}
 
 	return;

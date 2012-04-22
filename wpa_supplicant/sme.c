@@ -133,6 +133,7 @@ void sme_authenticate(struct wpa_supplicant *wpa_s,
 			return;
 		}
 #ifdef TI_CCX
+		ccx_stop_tsm(wpa_s);
 		if (wpa_s->cckm_available == 1 && wpa_s->ccx_roaming) {
 			ccx_ies = ccx_event_cckm_start_handler(wpa_s, (BYTE*)&bss->tsf, bss->bssid,
 					&ccx_ies_len);
@@ -336,6 +337,7 @@ if (wpa_s->sme.assoc_req_ie_len + CCX_VERSION_IE_LEN + 2 <
 		*pos++ = 0;
 		wpa_s->sme.assoc_req_ie_len += CCX_RM_CAPABILITY_IE_LEN + 2;
 	}
+	os_get_time(&wpa_s->roam_ts);
 #endif /* TI_CCX */
 	wpa_supplicant_cancel_sched_scan(wpa_s);
 	wpa_supplicant_cancel_scan(wpa_s);

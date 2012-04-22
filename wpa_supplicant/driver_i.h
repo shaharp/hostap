@@ -713,6 +713,15 @@ static inline void wpa_drv_update_cckm_request(struct wpa_supplicant *wpa_s,
 	}
 }
 
+static inline int wpa_drv_get_ts_metrics(struct wpa_supplicant *wpa_s, u8 tid,
+		struct wpa_ts_metric *tsm)
+{
+	if (!wpa_s->driver->get_ts_metrics)
+		return -1;
+
+	return wpa_s->driver->get_ts_metrics(wpa_s->drv_priv, tid, tsm);
+}
+
 static inline int wpa_drv_set_tspec(struct wpa_supplicant *wpa_s,
 		struct tspec_params *tspec_params) {
 	if (!wpa_s->driver->set_tspec)

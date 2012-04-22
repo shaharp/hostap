@@ -1018,6 +1018,14 @@ struct wpa_signal_info {
 };
 
 #ifdef TI_CCX
+struct wpa_ts_metric {
+	unsigned int packet_queue_delay;
+	unsigned int packet_transmit_delay;
+	unsigned int packet_lost;
+	unsigned int packet_count;
+	u16 packet_delay_histogram[4];
+};
+
 struct tspec_params {
 	u8 tid;
 	u8 power_save_behavior;
@@ -2667,6 +2675,9 @@ struct wpa_driver_ops {
 	 * Calls Driver's
 	 */
 	int (*ccx_rogueap_send_list)(void *pPriv);
+
+	int (*get_ts_metrics)(void *priv, u8 tid,
+					   struct wpa_ts_metric *ts_metrics);
 
 	int (*set_tspec)(void *priv, struct tspec_params *tspec_param);
 #endif /* TI_CCX */
