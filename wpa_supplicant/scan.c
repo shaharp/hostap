@@ -600,7 +600,8 @@ static void wpa_supplicant_scan(void *eloop_ctx, void *timeout_ctx)
 		if (ssid == NULL && max_ssids > 1)
 			ssid = wpa_s->conf->ssid;
 		while (ssid) {
-			if (!wpas_network_disabled(ssid) && ssid->scan_ssid) {
+			if (!wpas_network_disabled(ssid) && ssid->scan_ssid &&
+			    !ssid->sched_scanned) {
 				wpa_hexdump_ascii(MSG_DEBUG, "Scan SSID",
 						  ssid->ssid, ssid->ssid_len);
 				params.ssids[params.num_ssids].ssid =
@@ -777,6 +778,14 @@ int wpa_supplicant_delayed_sched_scan(struct wpa_supplicant *wpa_s,
 	return 0;
 }
 
+static void wpa_supplicant_clear_sched_scanned(struct wpa_supplicant *wpa_s)
+{
+	struct wpa_ssid *ssid;
+
+	for (ssid = wpa_s->conf->ssid; ssid; ssid = ssid->next)
+		ssid->sched_scanned = 0;
+}
+
 
 /**
  * wpa_supplicant_req_sched_scan - Start a periodic scheduled scan
@@ -810,6 +819,7 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 	}
 
 	wpa_s->override_sched_scan = 0;
+	wpa_supplicant_clear_sched_scanned(wpa_s);
 
 	if (!wpa_supplicant_enabled_networks(wpa_s->conf))
 		return 0;
@@ -905,6 +915,7 @@ int wpa_supplicant_req_sched_scan(struct wpa_supplicant *wpa_s)
 					ssid->ssid_len;
 				params.num_ssids++;
 			}
+			ssid->sched_scanned = 1;
 			ssid = ssid->pnext;
 		}
 	}
@@ -947,6 +958,7 @@ start_scan:
 	if (ret) {
 		wpa_dbg(wpa_s, MSG_WARNING,
 			"Failed to start sched scan (%d)", ret);
+		wpa_supplicant_clear_sched_scanned(wpa_s);
 		return ret;
 	}
 
