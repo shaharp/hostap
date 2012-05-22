@@ -1109,10 +1109,12 @@ enum nl80211_commands {
  *	indicate which WoW triggers should be enabled. This is also
  *	used by %NL80211_CMD_GET_WOWLAN to get the currently enabled WoWLAN
  *	triggers.
-
+ *
  * @NL80211_ATTR_SCHED_SCAN_INTERVAL: Interval between scheduled scan
- *	cycles, in msecs.
-
+ *	cycles, in msecs. If short interval is supported by the driver
+ *      and configured then this will be used only after the requested
+ *      number of short intervals
+ *
  * @NL80211_ATTR_SCHED_SCAN_MATCH: Nested attribute with one or more
  *	sets of attributes to match during scheduled scans.  Only BSSs
  *	that match any of the sets will be reported.  These are
@@ -1141,34 +1143,6 @@ enum nl80211_commands {
  *
  * @%NL80211_ATTR_REKEY_DATA: nested attribute containing the information
  *	necessary for GTK rekeying in the device, see &enum nl80211_rekey_data.
- *
- * @%NL80211_ATTR_IM_SCAN_RESULT: Flag attribute to enable intermediate
- *	scan result notification event (%NL80211_CMD_IM_SCAN_RESULT)
- *	for the %NL80211_CMD_TRIGGER_SCAN command.
- *	When set: will notify on each new scan result in the cache.
- * @%NL80211_ATTR_IM_SCAN_RESULT_MIN_RSSI: Intermediate event filtering.
- *	When set: will notify only those new scan result whose signal
- *	strength of probe response/beacon (in dBm) is stronger than this
- *	negative value (usually: -20 dBm > X > -95 dBm).
- *
- * @%NL80211_ATTR_CAPABILITIES: Flags (u32) attribute to expose device
- *	capabilities flags which defined in nl80211_device_capabilities.
- *
- * @%NL80211_ATTR_SCAN_MIN_DWELL: Minimum scan dwell time (in TUs), u32
- *	attribute to setup minimum time to wait on each channel, if received
- *	at least one probe response during this period will continue waiting
- *	%NL80211_ATTR_SCAN_MAX_DWELL, otherwise will move to next channel.
- *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
- *	command. This is optional attribute, so if it's not set driver should
- *	use hardware default values.
- * @%NL80211_ATTR_SCAN_MAX_DWELL: Maximum scan dwell time (in TUs), u32
- *	attribute to setup maximum time to wait on each channel.
- *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
- *	command. This is optional attribute, so if it's not set driver should
- *	use hardware default values.
- * @%NL80211_ATTR_SCAN_NUM_PROBE:  Attribute (u8) to setup number of probe
- *	requests to transmit on each active scan channel, used with
- *	%NL80211_CMD_TRIGGER_SCAN command.
  *
  * @NL80211_ATTR_SCAN_SUPP_RATES: rates per to be advertised as supported in scan,
  *	nested array attribute containing an entry for each band, with the entry
@@ -1273,6 +1247,32 @@ enum nl80211_commands {
  *
  * @NL80211_ATTR_BG_SCAN_PERIOD: Background scan period in seconds
  *      or 0 to disable background scan.
+ *
+ * @%NL80211_ATTR_IM_SCAN_RESULT: Flag attribute to enable intermediate
+ *	scan result notification event (%NL80211_CMD_IM_SCAN_RESULT)
+ *	for the %NL80211_CMD_TRIGGER_SCAN command.
+ *	When set: will notify on each new scan result in the cache.
+ *
+ * @%NL80211_ATTR_IM_SCAN_RESULT_MIN_RSSI: Intermediate event filtering.
+ *	When set: will notify only those new scan result whose signal
+ *	strength of probe response/beacon (in dBm) is stronger than this
+ *	negative value (usually: -20 dBm > X > -95 dBm).
+ *
+ * @%NL80211_ATTR_SCAN_MIN_DWELL: Minimum scan dwell time (in TUs), u32
+ *	attribute to setup minimum time to wait on each channel, if received
+ *	at least one probe response during this period will continue waiting
+ *	%NL80211_ATTR_SCAN_MAX_DWELL, otherwise will move to next channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_MAX_DWELL: Maximum scan dwell time (in TUs), u32
+ *	attribute to setup maximum time to wait on each channel.
+ *	Relevant only for active scan, used with %NL80211_CMD_TRIGGER_SCAN
+ *	command. This is optional attribute, so if it's not set driver should
+ *	use hardware default values.
+ * @%NL80211_ATTR_SCAN_NUM_PROBE:  Attribute (u8) to setup number of probe
+ *	requests to transmit on each active scan channel, used with
+ *	%NL80211_CMD_TRIGGER_SCAN command.
  *
  * @NL80211_ATTR_SCHED_SCAN_SHORT_INTERVAL: interval between
  *      each short interval scheduled scan cycle in msecs.
@@ -1534,8 +1534,6 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_IM_SCAN_RESULT,
 	NL80211_ATTR_IM_SCAN_RESULT_MIN_RSSI,
-
-	NL80211_ATTR_CAPABILITIES,
 
 	NL80211_ATTR_SCAN_MIN_DWELL,
 	NL80211_ATTR_SCAN_MAX_DWELL,
@@ -2607,11 +2605,14 @@ enum nl80211_attr_cqm {
  *      configured threshold
  * @NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH: The RSSI is higher than the
  *      configured threshold
+ * @NL80211_CQM_RSSI_BEACON_LOSS_EVENT: The device experienced beacon loss.
+ *	(Note that deauth/disassoc will still follow if the AP is not
+ *	available. This event might get used as roaming event, etc.)
  */
 enum nl80211_cqm_rssi_threshold_event {
 	NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
 	NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
-	NL80211_CQM_RSSI_BEACON_LOSS,
+	NL80211_CQM_RSSI_BEACON_LOSS_EVENT,
 };
 
 
