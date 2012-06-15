@@ -2506,7 +2506,6 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
 			}
 
 			if (combination_has_p2p && combination_has_mgd) {
-				p2p_concurrent = 1;
 				break;
 			}
 
