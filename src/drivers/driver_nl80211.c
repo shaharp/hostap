@@ -9602,7 +9602,7 @@ static int wpa_driver_nl80211_driver_cmd(void *priv, char *cmd, char *buf,
 
 		ret = nl80211_get_link_signal(drv, &sig);
 		if (ret == 0) {
-			linkspeed = sig.current_txrate;
+			linkspeed = sig.current_txrate / 1000;
 			ret = os_snprintf(buf, buf_len, "LinkSpeed %d\n",
 					  linkspeed);
 		}
