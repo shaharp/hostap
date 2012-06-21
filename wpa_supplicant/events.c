@@ -2234,18 +2234,6 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 					    data->deauth_info.ie,
 					    data->deauth_info.ie_len);
 			}
-
-#ifdef CONFIG_AP
-			if (wpa_s->ap_iface == NULL)
-#endif /* CONFIG_AP */
-			{
-#ifdef CONFIG_SME
-				wpa_s->sme.prev_bssid_set = 0;
-#endif /* CONFIG_SME */
-				wpa_supplicant_set_state(wpa_s,
-							 WPA_DISCONNECTED);
-				os_memset(wpa_s->bssid, 0, ETH_ALEN);
-			}
 		}
 #ifdef CONFIG_AP
 		if (wpa_s->ap_iface && data && data->deauth_info.addr) {
