@@ -3060,6 +3060,9 @@ static int p2p_ctrl_connect(struct wpa_supplicant *wpa_s, char *cmd,
 		if (go_intent < 0 || go_intent > 15)
 			return -1;
 	}
+	wpa_printf(MSG_DEBUG, "CTRL_IFACE: Forcing go_intent=14 "
+		   "regardless of go_intent requested");
+	go_intent = 14;
 
 	pos2 = os_strstr(pos, " freq=");
 	if (pos2) {
