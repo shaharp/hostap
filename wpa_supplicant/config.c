@@ -3058,6 +3058,7 @@ static const struct global_parse_data global_fields[] = {
 	{ INT(p2p_go_ht40), 0 },
 	{ INT(p2p_disabled), 0 },
 	{ INT(p2p_no_group_iface), 0 },
+	{ INT(p2p_multi_chan), 0 },
 #endif /* CONFIG_P2P */
 	{ FUNC(country), CFG_CHANGED_COUNTRY },
 	{ INT(bss_max_count), 0 },

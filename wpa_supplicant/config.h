@@ -759,6 +759,14 @@ struct wpa_config {
 	int p2p_go_ht40;
 
 	/**
+	 * p2p_multi_chan - Default to multi-channel operation when operating
+	 * as p2p. We will try to optimize throughput instead of trying to make
+	 * sure P2P starts on the same channel as another interface that's
+	 * currently connected.
+	 */
+	int p2p_multi_chan;
+
+	/**
 	 * p2p_disabled - Whether P2P operations are disabled for this interface
 	 */
 	int p2p_disabled;
