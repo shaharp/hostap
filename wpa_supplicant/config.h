@@ -799,6 +799,12 @@ struct wpa_config {
 	 * this default behavior.
 	 */
 	enum mfp_options pmf;
+
+	/*
+	 * concurrent_sched_scan - sched scan can run concurrently with normal
+	 * scan and no need to stop one to do the other.
+	 */
+	int concurrent_sched_scan;
 };
 
 
