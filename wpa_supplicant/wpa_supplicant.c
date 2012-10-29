@@ -1808,6 +1808,24 @@ void wpa_supplicant_remove_network(struct wpa_supplicant *wpa_s,
 	}
 }
 
+static void wpa_supplicant_enable_one_network(struct wpa_supplicant *wpa_s,
+					     struct wpa_ssid *ssid)
+{
+	if (!ssid || !ssid->disabled || ssid->disabled == 2)
+		return;
+
+	ssid->disabled = 0;
+	wpas_clear_temp_disabled(wpa_s, ssid, 1);
+	wpas_notify_network_enabled_changed(wpa_s, ssid);
+
+	/*
+	 *Try to reassociate since there is no current configuration and a new
+	 * network was made available.
+	 */
+	if (!wpa_s->current_ssid)
+		wpa_s->reassociate = 1;
+}
+
 /**
  * wpa_supplicant_enable_network - Mark a configured network as enabled
  * @wpa_s: wpa_supplicant structure for a network interface
