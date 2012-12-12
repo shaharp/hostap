@@ -1806,6 +1806,8 @@ void wpa_supplicant_remove_network(struct wpa_supplicant *wpa_s,
 
 		wpa_config_remove_network(wpa_s->conf, ssid->id);
 	}
+
+	wpa_supplicant_req_sched_scan(wpa_s);
 }
 
 static void wpa_supplicant_enable_one_network(struct wpa_supplicant *wpa_s,
