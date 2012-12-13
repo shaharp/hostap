@@ -640,6 +640,7 @@ struct wpa_supplicant {
 	int wps_ap_iter;
 
 	int after_wps;
+	u8 wps_bssid[ETH_ALEN];
 	int known_wps_freq;
 	unsigned int wps_freq;
 	u16 wps_ap_channel;
